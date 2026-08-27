@@ -1,0 +1,273 @@
+/* ===== TOPBAR NAVBAR (Friendly QueueLess Campus) ===== */
+.ql-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.ql-topbar-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---- Friendly Brand / Logo ---- */
+.ql-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ql-friendly-logo {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #dbeafe, #ede9fe);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  transition: transform 0.2s;
+}
+
+.ql-brand:hover .ql-friendly-logo {
+  transform: scale(1.08) rotate(-5deg);
+}
+
+.ql-brand-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1e3a8a;
+  letter-spacing: -0.5px;
+}
+
+.ql-brand-accent {
+  font-weight: 500;
+  color: #3b82f6;
+}
+
+/* ---- Nav Links ---- */
+.ql-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2.25rem;
+}
+
+.ql-nav-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ql-nav-btn:hover,
+.ql-nav-btn.active {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.ql-chevron-icon {
+  transition: transform 0.2s;
+}
+
+.ql-nav-btn.active .ql-chevron-icon {
+  transform: rotate(180deg);
+}
+
+/* ---- Dropdown ---- */
+.ql-dropdown-container {
+  position: relative;
+}
+
+.ql-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  animation: dropIn 0.2s ease-out;
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ql-dropdown-menu button {
+  background: none;
+  border: none;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.95rem;
+  color: #475569;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ql-dropdown-menu button:hover {
+  background: #f0f7ff;
+  color: #1e3a8a;
+  transform: translateX(3px);
+}
+
+.ql-menu-icon {
+  font-size: 1.1rem;
+}
+
+/* ---- Right Actions ---- */
+.ql-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ql-btn-solid {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.4rem;
+  background: #1e40af;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.ql-btn-solid:hover {
+  background: #1e3a8a;
+  transform: translateY(-1px);
+}
+
+.ql-arrow {
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+
+.ql-btn-solid:hover .ql-arrow {
+  transform: translateX(3px);
+}
+
+/* Support Button with Question Mark */
+.ql-btn-support {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.2rem;
+  background: transparent;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.ql-btn-support:hover {
+  background: #f8fafc;
+  border-color: #3b82f6;
+  color: #1e3a8a;
+}
+
+.ql-question-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  color: #3b82f6;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ql-btn-support:hover .ql-question-mark {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+/* ---- Mobile ---- */
+.ql-mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #1e3a8a;
+  cursor: pointer;
+}
+
+.ql-mobile-drawer {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .ql-nav-links {
+    display: none;
+  }
+  .ql-btn-solid,
+  .ql-btn-support {
+    display: none;
+  }
+  .ql-mobile-toggle {
+    display: block;
+  }
+  .ql-mobile-drawer {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    padding: 0.5rem 1rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .ql-mobile-drawer button {
+    background: none;
+    border: none;
+    padding: 0.9rem 1rem;
+    text-align: left;
+    font-size: 1rem;
+    color: #475569;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .ql-mobile-drawer button:hover {
+    color: #1e3a8a;
+    background: #f8fafc;
+  }
+}

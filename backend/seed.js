@@ -5,19 +5,25 @@ const services = [
   {
     name: 'Canteen',
     code: 'C',
-    description: 'College Canteen',
+    description: 'College Canteen - Refreshments & Meals',
     averageServiceTime: 5
   },
   {
     name: 'Library',
     code: 'L',
-    description: 'College Library Counter',
+    description: 'College Library - Books Issue & Returns Desk',
     averageServiceTime: 3
+  },
+  {
+    name: 'Counter',
+    code: 'CR',
+    description: 'General Counter - Fee Payments & Certificates',
+    averageServiceTime: 4
   },
   {
     name: 'Office',
     code: 'O',
-    description: 'Administrative Office',
+    description: 'Administrative Office - Student Affairs & Queries',
     averageServiceTime: 7
   }
 ];
@@ -30,7 +36,12 @@ const seed = async () => {
         await Service.create(svc);
         console.log(`Created service: ${svc.name}`);
       } else {
-        console.log(`Service already exists: ${svc.name}`);
+        // Update description or make sure it matches
+        existing.name = svc.name;
+        existing.description = svc.description;
+        existing.averageServiceTime = svc.averageServiceTime;
+        await existing.save();
+        console.log(`Service verified/updated: ${svc.name}`);
       }
     }
     console.log('Seed completed!');

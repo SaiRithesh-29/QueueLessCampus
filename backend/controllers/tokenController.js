@@ -1,5 +1,6 @@
 const Token = require('../models/Token');
 const Service = require('../models/Service');
+const { findService } = require('./serviceController');
 
 const generateTokenNumber = async (service) => {
   const today = new Date();
@@ -12,8 +13,11 @@ const generateTokenNumber = async (service) => {
 
   let nextNum = 1;
   if (lastToken) {
-    const lastNum = parseInt(lastToken.tokenNumber.split('-')[1], 10);
-    nextNum = lastNum + 1;
+    const parts = lastToken.tokenNumber.split('-');
+    const lastNum = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(lastNum)) {
+      nextNum = lastNum + 1;
+    }
   }
 
   return `${service.code}-${String(nextNum).padStart(3, '0')}`;
@@ -24,23 +28,24 @@ const createToken = async (req, res) => {
     const { serviceId } = req.body;
 
     if (!serviceId) {
-      return res.status(400).json({ message: 'Service ID is required' });
+      return res.status(400).json({ message: 'Service ID or identifier is required' });
     }
 
-    const service = await Service.findById(serviceId);
+    const service = await findService(serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
 
+    const actualServiceId = service._id;
     const tokenNumber = await generateTokenNumber(service);
 
     const activeCount = await Token.countDocuments({
-      service: serviceId,
+      service: actualServiceId,
       status: { $in: ['WAITING', 'SERVING'] }
     });
 
     const currentlyServing = await Token.findOne({
-      service: serviceId,
+      service: actualServiceId,
       status: 'SERVING'
     });
 
@@ -48,7 +53,7 @@ const createToken = async (req, res) => {
 
     const token = await Token.create({
       tokenNumber,
-      service: serviceId,
+      service: actualServiceId,
       status: tokenStatus,
       position: activeCount + 1,
       servingAt: tokenStatus === 'SERVING' ? new Date() : null
@@ -58,7 +63,7 @@ const createToken = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('queue:update', { serviceId });
+      io.emit('queue:update', { serviceId: actualServiceId });
     }
 
     res.status(201).json({
@@ -85,23 +90,25 @@ const getToken = async (req, res) => {
 
 const getQueueStatus = async (req, res) => {
   try {
-    const service = await Service.findById(req.params.serviceId);
+    const service = await findService(req.params.serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
 
+    const actualServiceId = service._id;
+
     const servingToken = await Token.findOne({
-      service: req.params.serviceId,
+      service: actualServiceId,
       status: 'SERVING'
     });
 
     const waitingTokens = await Token.find({
-      service: req.params.serviceId,
+      service: actualServiceId,
       status: 'WAITING'
     }).sort({ createdAt: 1 });
 
     const completedToday = await Token.countDocuments({
-      service: req.params.serviceId,
+      service: actualServiceId,
       status: 'COMPLETED',
       completedAt: {
         $gte: new Date(new Date().setHours(0, 0, 0, 0))
@@ -144,7 +151,7 @@ const getTokenStatus = async (req, res) => {
       createdAt: { $lt: token.createdAt }
     });
 
-    const avgTime = serviceDoc.averageServiceTime || 5;
+    const avgTime = serviceDoc ? (serviceDoc.averageServiceTime || 5) : 5;
 
     let estimatedWait = 0;
     if (token.status === 'SERVING') {
@@ -168,15 +175,15 @@ const getTokenStatus = async (req, res) => {
 
 const completeToken = async (req, res) => {
   try {
-    const { serviceId } = req.params;
-
-    const service = await Service.findById(serviceId);
+    const service = await findService(req.params.serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
 
+    const actualServiceId = service._id;
+
     const currentToken = await Token.findOne({
-      service: serviceId,
+      service: actualServiceId,
       status: 'SERVING'
     });
 
@@ -189,7 +196,7 @@ const completeToken = async (req, res) => {
     await currentToken.save();
 
     const nextToken = await Token.findOne({
-      service: serviceId,
+      service: actualServiceId,
       status: 'WAITING'
     }).sort({ createdAt: 1 });
 
@@ -203,7 +210,7 @@ const completeToken = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('queue:update', { serviceId });
+      io.emit('queue:update', { serviceId: actualServiceId });
       if (newServing) {
         io.emit('token:serving', { tokenId: newServing._id, tokenNumber: newServing.tokenNumber });
       }
