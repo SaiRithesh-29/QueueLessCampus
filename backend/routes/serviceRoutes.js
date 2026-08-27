@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getServices, getServiceById } = require('../controllers/serviceController');
+const {
+  getServices,
+  getServiceById,
+  toggleServiceStatus
+} = require('../controllers/serviceController');
 
 router.get('/', getServices);
 router.get('/:id', getServiceById);
+router.post('/:id/toggle', toggleServiceStatus);
 
 module.exports = router;

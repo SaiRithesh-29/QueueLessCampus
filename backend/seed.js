@@ -40,6 +40,7 @@ const seed = async () => {
         existing.name = svc.name;
         existing.description = svc.description;
         existing.averageServiceTime = svc.averageServiceTime;
+        if (existing.isOpen === undefined) existing.isOpen = true;
         await existing.save();
         console.log(`Service verified/updated: ${svc.name}`);
       }

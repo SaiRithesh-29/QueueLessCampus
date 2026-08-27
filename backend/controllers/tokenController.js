@@ -23,6 +23,14 @@ const generateTokenNumber = async (service) => {
   return `${service.code}-${String(nextNum).padStart(3, '0')}`;
 };
 
+// Emit real-time queue update for a service
+const emitQueueUpdate = (io, serviceId) => {
+  if (io) {
+    io.to(`service:${serviceId}`).emit('queue:update', { serviceId });
+    io.emit('queue:update', { serviceId });
+  }
+};
+
 const createToken = async (req, res) => {
   try {
     const { serviceId } = req.body;
@@ -34,6 +42,12 @@ const createToken = async (req, res) => {
     const service = await findService(serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
+    }
+
+    if (!service.isOpen) {
+      return res.status(400).json({
+        message: `${service.name} is currently closed. No new tokens can be generated right now.`
+      });
     }
 
     const actualServiceId = service._id;
@@ -62,9 +76,7 @@ const createToken = async (req, res) => {
     const populated = await token.populate('service');
 
     const io = req.app.get('io');
-    if (io) {
-      io.emit('queue:update', { serviceId: actualServiceId });
-    }
+    emitQueueUpdate(io, actualServiceId);
 
     res.status(201).json({
       token: populated,
@@ -151,6 +163,12 @@ const getTokenStatus = async (req, res) => {
       createdAt: { $lt: token.createdAt }
     });
 
+    const peopleBehind = await Token.countDocuments({
+      service: token.service._id,
+      status: 'WAITING',
+      createdAt: { $gt: token.createdAt }
+    });
+
     const avgTime = serviceDoc ? (serviceDoc.averageServiceTime || 5) : 5;
 
     let estimatedWait = 0;
@@ -161,12 +179,24 @@ const getTokenStatus = async (req, res) => {
     }
 
     res.json({
-      token,
+      token: {
+        _id: token._id,
+        tokenNumber: token.tokenNumber,
+        status: token.status,
+        position: token.position,
+        createdAt: token.createdAt,
+        servingAt: token.servingAt,
+        completedAt: token.completedAt
+      },
+      service: serviceDoc,
       serving: servingToken,
       peopleAhead,
+      peopleBehind,
       estimatedWait,
       isServing: token.status === 'SERVING',
-      isCompleted: token.status === 'COMPLETED'
+      isCompleted: token.status === 'COMPLETED',
+      isCancelled: token.status === 'CANCELLED',
+      status: token.status
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch token status', error: error.message });
@@ -191,9 +221,12 @@ const completeToken = async (req, res) => {
       return res.status(400).json({ message: 'No token currently being served' });
     }
 
+    // Prevent completing an already completed token (double-serving guard)
     currentToken.status = 'COMPLETED';
     currentToken.completedAt = new Date();
     await currentToken.save();
+
+    const completedToken = currentToken;
 
     const nextToken = await Token.findOne({
       service: actualServiceId,
@@ -209,22 +242,131 @@ const completeToken = async (req, res) => {
     }
 
     const io = req.app.get('io');
-    if (io) {
-      io.emit('queue:update', { serviceId: actualServiceId });
-      if (newServing) {
-        io.emit('token:serving', { tokenId: newServing._id, tokenNumber: newServing.tokenNumber });
+    emitQueueUpdate(io, actualServiceId);
+
+    if (newServing) {
+      io.emit('token:serving', {
+        serviceId: actualServiceId,
+        tokenId: newServing._id,
+        tokenNumber: newServing.tokenNumber
+      });
+    }
+
+    io.emit('token:completed', {
+      serviceId: actualServiceId,
+      tokenId: completedToken._id,
+      tokenNumber: completedToken.tokenNumber
+    });
+
+    res.json({
+      completed: completedToken,
+      newServing,
+      message: newServing
+        ? `Token ${completedToken.tokenNumber} completed. ${newServing.tokenNumber} is now being served.`
+        : `Token ${completedToken.tokenNumber} completed. No more tokens in queue.`
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to complete token', error: error.message });
+  }
+};
+
+const cancelToken = async (req, res) => {
+  try {
+    const token = await Token.findById(req.params.id);
+    if (!token) {
+      return res.status(404).json({ message: 'Token not found' });
+    }
+
+    if (token.status === 'COMPLETED' || token.status === 'CANCELLED') {
+      return res.status(400).json({
+        message: `Token has already been ${token.status.toLowerCase()} and cannot be cancelled.`
+      });
+    }
+
+    if (token.status === 'SERVING') {
+      return res.status(400).json({ message: 'Token is currently being served and cannot be cancelled.' });
+    }
+
+    token.status = 'CANCELLED';
+    token.position = 0;
+    await token.save();
+
+    const io = req.app.get('io');
+    emitQueueUpdate(io, token.service);
+
+    res.json({ message: 'Token cancelled successfully', token });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to cancel token', error: error.message });
+  }
+};
+
+// Analytics for a service dashboard
+const getAnalytics = async (req, res) => {
+  try {
+    const service = await findService(req.params.serviceId);
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    const actualServiceId = service._id;
+    const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+
+    const tokensServed = await Token.countDocuments({
+      service: actualServiceId,
+      status: 'COMPLETED',
+      completedAt: { $gte: startOfDay }
+    });
+
+    const currentlyWaiting = await Token.countDocuments({
+      service: actualServiceId,
+      status: 'WAITING'
+    });
+
+    const currentlyServing = await Token.findOne({
+      service: actualServiceId,
+      status: 'SERVING'
+    });
+
+    let averageWait = 0;
+    if (tokensServed > 0) {
+      const completedTokens = await Token.find({
+        service: actualServiceId,
+        status: 'COMPLETED',
+        completedAt: { $gte: startOfDay }
+      });
+      const waitTimes = completedTokens
+        .filter((t) => t.servingAt && t.createdAt)
+        .map((t) => (t.servingAt.getTime() - t.createdAt.getTime()) / 60000);
+      if (waitTimes.length > 0) {
+        averageWait = Math.round((waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length) * 10) / 10;
+      }
+    }
+
+    let averageService = 0;
+    if (tokensServed > 0) {
+      const completedTokens = await Token.find({
+        service: actualServiceId,
+        status: 'COMPLETED',
+        completedAt: { $gte: startOfDay }
+      });
+      const serviceTimes = completedTokens
+        .filter((t) => t.completedAt && t.servingAt)
+        .map((t) => (t.completedAt.getTime() - t.servingAt.getTime()) / 60000);
+      if (serviceTimes.length > 0) {
+        averageService = Math.round((serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length) * 10) / 10;
       }
     }
 
     res.json({
-      completed: currentToken,
-      newServing,
-      message: newServing
-        ? `Token ${currentToken.tokenNumber} completed. ${newServing.tokenNumber} is now being served.`
-        : `Token ${currentToken.tokenNumber} completed. No more tokens in queue.`
+      service,
+      tokensServed,
+      currentlyWaiting,
+      currentlyServing: currentlyServing ? currentlyServing.tokenNumber : null,
+      averageWait,
+      averageService
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to complete token', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch analytics', error: error.message });
   }
 };
 
@@ -233,5 +375,7 @@ module.exports = {
   getToken,
   getQueueStatus,
   getTokenStatus,
-  completeToken
+  completeToken,
+  cancelToken,
+  getAnalytics
 };

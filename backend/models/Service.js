@@ -23,6 +23,10 @@ const serviceSchema = new mongoose.Schema({
     type: Number,
     default: 5,
     min: 1
+  },
+  isOpen: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true

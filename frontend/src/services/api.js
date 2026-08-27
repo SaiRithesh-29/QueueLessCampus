@@ -12,8 +12,23 @@ export const getServices = async () => {
   return response.data;
 };
 
+export const getService = async (serviceId) => {
+  const response = await api.get(`/services/${serviceId}`);
+  return response.data;
+};
+
+export const toggleService = async (serviceId) => {
+  const response = await api.post(`/services/${serviceId}/toggle`);
+  return response.data;
+};
+
 export const createToken = async (serviceId) => {
   const response = await api.post('/tokens', { serviceId });
+  return response.data;
+};
+
+export const cancelToken = async (tokenId) => {
+  const response = await api.post(`/tokens/${tokenId}/cancel`);
   return response.data;
 };
 
@@ -24,6 +39,11 @@ export const getTokenStatus = async (tokenId) => {
 
 export const getQueueStatus = async (serviceId) => {
   const response = await api.get(`/tokens/queue/${serviceId}`);
+  return response.data;
+};
+
+export const getAnalytics = async (serviceId) => {
+  const response = await api.get(`/tokens/analytics/${serviceId}`);
   return response.data;
 };
 

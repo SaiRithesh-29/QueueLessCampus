@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { getServices } from '../services/api';
 import './HomePage.css';
 
+const serviceIcons = { Canteen: '🍽️', Library: '📚', Office: '🏛️', Counter: '💳' };
+
 const FLOATING_CARDS = [
   {
     position: 'top-left',
@@ -126,12 +128,12 @@ const HomePage = () => {
           <p className="hero-eyebrow">BECAUSE EVERY INTERACTION COUNTS</p>
 
           <h1 className="hero-title">
-            Queue Less,<br />Smile More
+            Queue Less,<br />Stress Less
           </h1>
 
           <p className="hero-subtitle">
             The leading queue management system for campus to
-            <br />help you skip the line and smile more
+            <br />help you skip the line and stress less
           </p>
 
           <div className="hero-ctas">
@@ -144,6 +146,47 @@ const HomePage = () => {
           </div>
         </div>
       </main>
+
+      {/* Live Services Dashboard */}
+      <section className="home-services">
+        <div className="home-services-header">
+          <span className="hs-eyebrow">CAMPUS SERVICES</span>
+          <h2>Join a live queue</h2>
+          <p className="hs-sub">Pick a service to get your digital token. No more standing in line.</p>
+        </div>
+
+        <div className="home-services-grid">
+          {services.length === 0 && (
+            <p className="hs-empty">Loading services…</p>
+          )}
+          {services.map((s) => {
+            const icon = serviceIcons[s.name] || '🏢';
+            return (
+              <div key={s._id} className={`hs-card ${s.isOpen ? '' : 'closed'}`}>
+                <div className="hs-card-top">
+                  <span className="hs-icon">{icon}</span>
+                  <span className={`hs-status ${s.isOpen ? 'open' : 'closed'}`}>
+                    {s.isOpen ? '● Open' : '● Closed'}
+                  </span>
+                </div>
+                <h3 className="hs-name">{s.name}</h3>
+                <p className="hs-desc">{s.description || 'Taller service counter'}</p>
+                <div className="hs-meta">
+                  <span className="hs-meta-item">Now: <strong>{s.serving?.tokenNumber || '—'}</strong></span>
+                  <span className="hs-meta-item">Waiting: <strong>{s.waitingCount ?? 0}</strong></span>
+                </div>
+                <button
+                  className={`hs-join ${s.isOpen ? '' : 'disabled'}`}
+                  onClick={() => handleCardClick(s.name)}
+                  disabled={!s.isOpen}
+                >
+                  {s.isOpen ? 'Join Queue →' : 'Currently Closed'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 };
