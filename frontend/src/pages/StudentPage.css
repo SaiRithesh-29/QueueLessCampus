@@ -1,0 +1,101 @@
+.student-page {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  padding: 2rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.sp-header { text-align: center; margin-bottom: 2rem; }
+.sp-icon { font-size: 3rem; display: block; margin-bottom: 0.5rem; }
+.sp-name { font-size: 2rem; font-weight: 700; color: #fff; margin: 0; }
+
+.gen-section { text-align: center; max-width: 400px; width: 100%; }
+.gen-text { font-size: 1.1rem; color: rgba(255,255,255,0.85); margin-bottom: 2rem; }
+
+.get-token-btn {
+  width: 100%; padding: 1.2rem 2rem; font-size: 1.3rem; font-weight: 700;
+  color: white; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4);
+  border-radius: 14px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(10px);
+}
+.get-token-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.3); transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.get-token-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.token-section { text-align: center; max-width: 450px; width: 100%; }
+
+.token-main-card {
+  background: rgba(255,255,255,0.95); border-radius: 16px; padding: 2rem;
+  margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+.token-label {
+  display: block; font-size: 0.85rem; font-weight: 600; color: #a0aec0;
+  text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.5rem;
+}
+.token-big {
+  display: block; font-size: 3.5rem; font-weight: 800; color: #2d3748;
+  font-family: 'Courier New', monospace;
+}
+.token-big.is-serving { color: #38a169; animation: tokenPulse 1.5s infinite; }
+.token-big.is-done { color: #a0aec0; text-decoration: line-through; }
+
+@keyframes tokenPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+.status-loading { color: rgba(255,255,255,0.8); padding: 1rem; }
+
+.status-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;
+}
+.info-card {
+  background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+.info-lbl {
+  display: block; font-size: 0.7rem; color: #a0aec0;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;
+}
+.info-val { display: block; font-size: 1.3rem; font-weight: 700; color: #2d3748; }
+.active-dot { color: #38a169; }
+
+.badge {
+  grid-column: 1 / -1; padding: 1.5rem; border-radius: 12px;
+  font-size: 1.5rem; font-weight: 800; text-align: center;
+}
+.badge-serving { background: rgba(56,161,105,0.15); color: #38a169; border: 2px solid rgba(56,161,105,0.3); }
+.badge-done { background: rgba(255,255,255,0.5); color: #a0aec0; border: 2px solid rgba(255,255,255,0.3); }
+
+.new-token-btn {
+  padding: 0.75rem 1.5rem; font-size: 0.9rem; color: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px; cursor: pointer; transition: all 0.2s;
+}
+.new-token-btn:hover { background: rgba(255,255,255,0.25); }
+
+.back-btn {
+  align-self: flex-start; padding: 0.5rem 1rem; font-size: 0.9rem;
+  color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+  cursor: pointer; transition: all 0.2s; margin-bottom: 1rem;
+}
+.back-btn:hover { background: rgba(255,255,255,0.25); }
+
+.sp-loading, .sp-error {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 60vh; color: rgba(255,255,255,0.8);
+}
+.sp-error button {
+  margin-top: 1rem; padding: 0.5rem 1.5rem; background: white; color: #667eea;
+  border: none; border-radius: 8px; cursor: pointer; font-weight: 600;
+}
+
+.error-msg {
+  color: #e53e3e; background: rgba(255,255,255,0.9); padding: 0.75rem 1rem;
+  border-radius: 8px; margin-bottom: 1rem; font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .token-big { font-size: 2.5rem; }
+  .status-grid { grid-template-columns: 1fr; }
+}
