@@ -7,12 +7,11 @@ import { notifyApproaching, notifyYourTurn, requestNotificationPermission } from
 import './StudentPage.css';
 
 const serviceIcons = { Canteen: '🍽️', Library: '📚', Office: '🏛️', Counter: '💳' };
-
-const STATUS_BADGE = {
-  WAITING: 'WAITING',
-  SERVING: 'SERVING',
-  COMPLETED: 'COMPLETED',
-  CANCELLED: 'CANCELLED'
+const serviceDescs = {
+  Canteen: 'Meals & Refreshments',
+  Library: 'Books Issue & Returns',
+  Office: 'Certificates, Queries & Services',
+  Counter: 'Fee Payments & Admin',
 };
 
 const StudentPage = () => {
@@ -28,297 +27,230 @@ const StudentPage = () => {
   const [error, setError] = useState(null);
   const [banner, setBanner] = useState(null);
   const [notifEnabled, setNotifEnabled] = useState(false);
-  const prevAheadRef = useRef(null);
   const prevStatusRef = useRef(null);
 
   const { status, loading: statusLoading } = useTokenStatus(tokenId);
 
-  // Load services and resolve the selected service
   useEffect(() => {
     connectSocket();
     getServices()
-      .then((servicesList) => {
-        if (!servicesList || servicesList.length === 0) {
-          setError('No active services found in database');
-          return;
-        }
-        setServices(servicesList);
+      .then((list) => {
+        if (!list || list.length === 0) { setError('No services found'); return; }
+        setServices(list);
         const key = (serviceId || '').toLowerCase();
-        const found = servicesList.find((s) =>
+        const found = list.find((s) =>
           s._id === serviceId ||
           (s.code && s.code.toLowerCase() === key) ||
-          s.name.toLowerCase().includes(key) ||
-          key.includes(s.name.toLowerCase())
+          s.name.toLowerCase().includes(key)
         );
-        setService(found || servicesList[0]);
+        setService(found || list[0]);
       })
-      .catch(() => setError('Failed to load service details'))
+      .catch(() => setError('Failed to load services'))
       .finally(() => setLoading(false));
   }, [serviceId]);
 
-  // Handle near-turn / turn notifications based on status transitions
+  // Notifications on status change
   useEffect(() => {
-    if (!status || !status.token) return;
+    if (!status?.token) return;
+    const ts = status.token.status;
+    const ahead = status.peopleAhead ?? 0;
 
-    const tokenStatus = status.token.status;
-    const peopleAhead = status.peopleAhead ?? 0;
-
-    // Notify when token becomes SERVING
-    if (tokenStatus === 'SERVING' && prevStatusRef.current !== 'SERVING') {
-      const n = notifyYourTurn(service?.name || 'Service');
-      setBanner(n);
-    }
-    // Notify when approaching (<= 2 ahead) and still WAITING
-    else if (
-      tokenStatus === 'WAITING' &&
-      peopleAhead > 0 &&
-      peopleAhead <= 2 &&
-      prevStatusRef.current !== 'APPROACHING'
-    ) {
-      prevAheadRef.current = peopleAhead;
-      const n = notifyApproaching(peopleAhead);
-      setBanner(n);
+    if (ts === 'SERVING' && prevStatusRef.current !== 'SERVING') {
+      setBanner(notifyYourTurn(service?.name || 'Service'));
+    } else if (ts === 'WAITING' && ahead > 0 && ahead <= 2 && prevStatusRef.current !== 'APPROACHING') {
+      setBanner(notifyApproaching(ahead));
       prevStatusRef.current = 'APPROACHING';
     }
-    // Reset flags appropriately
-    if (tokenStatus === 'SERVING') {
-      prevStatusRef.current = 'SERVING';
-    } else if (tokenStatus === 'COMPLETED' || tokenStatus === 'CANCELLED') {
-      prevStatusRef.current = tokenStatus;
-    } else if (peopleAhead > 2) {
-      prevStatusRef.current = 'WAITING';
-    }
+
+    if (ts === 'SERVING') prevStatusRef.current = 'SERVING';
+    else if (ts === 'COMPLETED' || ts === 'CANCELLED') prevStatusRef.current = ts;
+    else if (ahead > 2) prevStatusRef.current = 'WAITING';
   }, [status, service]);
 
-  // Auto-request notification permission once (user gesture later handles it)
   useEffect(() => {
     if (notifEnabled || !('Notification' in window)) return;
-    requestNotificationPermission().then((p) => {
-      if (p === 'granted') setNotifEnabled(true);
-    });
+    requestNotificationPermission().then((p) => { if (p === 'granted') setNotifEnabled(true); });
   }, [notifEnabled]);
 
-  const handleGetToken = async () => {
+  const handleJoin = async () => {
     if (!service?._id) return;
     try {
-      setCreating(true);
-      setError(null);
+      setCreating(true); setError(null);
       const data = await createToken(service._id);
-      setTokenData(data);
-      setTokenId(data.token._id);
-      setBanner(null);
+      setTokenData(data); setTokenId(data.token._id); setBanner(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to generate token');
-    } finally {
-      setCreating(false);
-    }
+      setError(err.response?.data?.message || 'Failed to join queue');
+    } finally { setCreating(false); }
   };
 
-  const handleCancelToken = async () => {
+  const handleCancel = async () => {
     if (!tokenId) return;
     try {
-      setCancelling(true);
-      setError(null);
+      setCancelling(true); setError(null);
       await cancelToken(tokenId);
-      setBanner(null);
-      setTokenId(null);
-      setTokenData(null);
+      setBanner(null); setTokenId(null); setTokenData(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to cancel token');
-    } finally {
-      setCancelling(false);
-    }
+      setError(err.response?.data?.message || 'Failed to cancel');
+    } finally { setCancelling(false); }
   };
 
-  const handleSelectService = (svc) => {
-    navigate(`/student/${svc._id}`);
-  };
+  const handleSwitch = (svc) => navigate(`/student/${svc._id}`);
 
-  if (loading) return <div className="sp-loading">⏳ Loading service queue details...</div>;
-
+  if (loading) return <div className="sp-loader">Loading...</div>;
   if (error && !service) return (
     <div className="sp-error">
-      <p>⚠️ {error}</p>
-      <button onClick={() => navigate('/')}>← Return to Home</button>
+      <p>{error}</p>
+      <button onClick={() => navigate('/')}>Back to Home</button>
     </div>
   );
 
-  const tokenStatus = status?.token?.status;
+  const ts = status?.token?.status;
 
   return (
-    <div className="student-page">
-      {/* Breadcrumb Navigation */}
+    <div className="sp">
+      {/* Breadcrumb */}
       <div className="sp-breadcrumb">
-        <button className="sp-back-btn" onClick={() => navigate('/')}>
-          ← Back to Home
-        </button>
-        <span className="sp-crumb-sep">/</span>
-        <span className="sp-crumb-current">{service?.name || 'Queue Token'}</span>
+        <button onClick={() => navigate('/')}>← Home</button>
+        <span>/</span>
+        <span className="sp-crumb-active">{service?.name}</span>
       </div>
 
-      {/* Header Info */}
+      {/* Service chips */}
+      <div className="sp-chips">
+        {services.map((s) => (
+          <button key={s._id} className={`sp-chip ${s._id === service?._id ? 'active' : ''} ${s.isOpen ? '' : 'off'}`}
+            onClick={() => handleSwitch(s)}>
+            {serviceIcons[s.name] || '🏢'} {s.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Service header */}
       <div className="sp-header">
-        <div className="sp-icon-wrap">
-          <span>{serviceIcons[service?.name] || '🏢'}</span>
-        </div>
-        <h1 className="sp-name">{service?.name}</h1>
-        <p className="sp-desc">{service?.description || 'Virtual Queue Token Dispenser'}</p>
-        <span className={`service-open-badge ${service?.isOpen ? 'open' : 'closed'}`}>
+        <span className="sp-svc-icon">{serviceIcons[service?.name] || '🏢'}</span>
+        <h1>{service?.name}</h1>
+        <p>{serviceDescs[service?.name] || service?.description || ''}</p>
+        <span className={`sp-open-badge ${service?.isOpen ? 'open' : 'closed'}`}>
           {service?.isOpen ? '● OPEN' : '● CLOSED'}
         </span>
       </div>
 
+      {/* Notification banner */}
       {banner && (
-        <div className={`notif-banner ${banner.type === 'serving' ? 'serving' : 'approaching'}`}>
-          <span className="notif-icon">{banner.type === 'serving' ? '🔔' : '⏰'}</span>
-          <div className="notif-text">
-            <span className="notif-title">{banner.title}</span>
-            <span className="notif-body">{banner.body}</span>
+        <div className={`sp-banner ${banner.type}`}>
+          <span className="sp-banner-icon">{banner.type === 'serving' ? '🎉' : '🔔'}</span>
+          <div>
+            <strong>{banner.title}</strong>
+            <span>{banner.body}</span>
           </div>
-          <button className="notif-close" onClick={() => setBanner(null)}>✕</button>
-        </div>
-      )}
-
-      {/* Service selector for improved dashboard */}
-      {services.length > 1 && (
-        <div className="sp-service-selector">
-          <span className="sp-selector-label">Switch Service:</span>
-          <div className="sp-selector-chips">
-            {services.map((s) => (
-              <button
-                key={s._id}
-                className={`sp-chip ${s._id === service?._id ? 'active' : ''} ${s.isOpen ? '' : 'closed'}`}
-                onClick={() => handleSelectService(s)}
-              >
-                {serviceIcons[s.name] || '🏢'} {s.name} {s.isOpen ? '' : '· Closed'}
-              </button>
-            ))}
-          </div>
+          <button onClick={() => setBanner(null)}>✕</button>
         </div>
       )}
 
       {!tokenId ? (
-        <div className="gen-section">
-          <div className="gen-card">
-            <h3>Ready to join the line?</h3>
-            <p className="gen-text">
-              Click below to generate your digital token. You'll receive real-time queue updates right on this screen — no need to stand in line.
-            </p>
-            {error && <div className="error-msg">{error}</div>}
-            <button
-              className="get-token-btn"
-              onClick={handleGetToken}
-              disabled={creating || !service?.isOpen}
-            >
-              {!service?.isOpen
-                ? '🚫 Service Closed'
-                : creating
-                  ? '⏳ Dispensing Token...'
-                  : '🎫 Join Queue'}
-            </button>
-            {!service?.isOpen && (
-              <p className="closed-note">This service is currently closed. Please try again later.</p>
-            )}
-            {/* Available services overview */}
-            <div className="gen-services-preview">
-              <span className="preview-label">Quick access:</span>
-              <div className="preview-chips">
-                {services.map((s) => (
-                  <button key={s._id} className="preview-chip" onClick={() => handleSelectService(s)}>
-                    {serviceIcons[s.name] || '🏢'} {s.name}
-                  </button>
-                ))}
-              </div>
+        /* ── JOIN QUEUE ── */
+        <div className="sp-join-card">
+          <h2>Join {service?.name} Queue</h2>
+
+          <div className="sp-join-stats">
+            <div className="sp-join-stat">
+              <span className="sp-join-stat-label">Currently Serving</span>
+              <span className="sp-join-stat-val">{status?.serving?.tokenNumber || '—'}</span>
+            </div>
+            <div className="sp-join-stat">
+              <span className="sp-join-stat-label">People Waiting</span>
+              <span className="sp-join-stat-val">{status?.peopleAhead ?? service?.waitingCount ?? 0}</span>
+            </div>
+            <div className="sp-join-stat">
+              <span className="sp-join-stat-label">Estimated Wait</span>
+              <span className="sp-join-stat-val">{status?.estimatedWait ?? 0} min</span>
             </div>
           </div>
+
+          {error && <div className="sp-error-msg">{error}</div>}
+
+          {service?.isOpen ? (
+            <button className="sp-join-btn" onClick={handleJoin} disabled={creating}>
+              {creating ? 'Joining...' : '🎫 Join Queue'}
+            </button>
+          ) : (
+            <button className="sp-join-btn closed" disabled>
+              Service Closed
+            </button>
+          )}
         </div>
       ) : (
-        <div className="token-section">
-          <div className="join-confirmation">
-            <span className="confirm-icon">✅</span>
-            <span className="confirm-text">You've successfully joined the virtual queue! You can now leave the queue area and monitor your status remotely.</span>
-          </div>
-
-          {/* Main Token Card */}
-          <div className="token-main-card">
-            <span className="token-label">YOUR TOKEN</span>
-            <span className={`token-big ${tokenStatus === 'SERVING' ? 'is-serving' : ''} ${tokenStatus === 'COMPLETED' ? 'is-done' : ''} ${tokenStatus === 'CANCELLED' ? 'is-done' : ''}`}>
+        /* ── QUEUE STATUS ── */
+        <div className="sp-status-section">
+          {/* Token card */}
+          <div className="sp-token-card">
+            <span className="sp-token-label">YOUR TOKEN</span>
+            <span className={`sp-token-num ${ts === 'SERVING' ? 'serving' : ''} ${ts === 'COMPLETED' || ts === 'CANCELLED' ? 'done' : ''}`}>
               {tokenData?.token?.tokenNumber}
             </span>
-            <div className="token-service-tag">
-              {service?.name} Counter
+            <span className="sp-token-svc">{service?.name} Counter</span>
+          </div>
+
+          {/* Status banner */}
+          <div className={`sp-status-bar ${ts === 'SERVING' ? 'serving' : ts === 'COMPLETED' ? 'done' : ts === 'CANCELLED' ? 'cancelled' : 'waiting'}`}>
+            <span className="sp-status-dot"></span>
+            <div>
+              <strong>
+                {ts === 'SERVING' ? "IT'S YOUR TURN!" :
+                 ts === 'COMPLETED' ? 'COMPLETED' :
+                 ts === 'CANCELLED' ? 'CANCELLED' : 'WAITING'}
+              </strong>
+              <span>
+                {ts === 'SERVING' ? `Please proceed to the ${service?.name} counter now.` :
+                 ts === 'COMPLETED' ? 'Thank you for using QueueLess Campus.' :
+                 ts === 'CANCELLED' ? 'Your token has been cancelled.' :
+                 'Your position updates automatically. You can leave and come back.'}
+              </span>
             </div>
           </div>
 
+          {/* Stats grid */}
           {statusLoading ? (
-            <div className="status-loading">🔄 Syncing queue position...</div>
+            <div className="sp-syncing">Syncing...</div>
           ) : status ? (
-            <>
-              {/* Queue Status Banner */}
-              <div className={`queue-status-banner ${tokenStatus === 'SERVING' ? 'serving' : tokenStatus === 'COMPLETED' ? 'completed' : tokenStatus === 'CANCELLED' ? 'cancelled' : 'waiting'}`}>
-                <span className="status-badge">
-                  {tokenStatus === 'SERVING' ? '🔔 SERVING'
-                    : tokenStatus === 'COMPLETED' ? '✅ COMPLETED'
-                    : tokenStatus === 'CANCELLED' ? '✖ CANCELLED'
-                    : '⏳ WAITING'}
-                </span>
-                <span className="status-text">
-                  {tokenStatus === 'SERVING'
-                    ? "It's your turn! Please proceed to the counter now."
-                    : tokenStatus === 'COMPLETED'
-                      ? 'Your service has been completed. Thank you!'
-                      : tokenStatus === 'CANCELLED'
-                        ? 'This token has been cancelled.'
-                        : 'You are in the queue. Your position updates automatically.'}
-                </span>
+            ts === 'WAITING' ? (
+              <div className="sp-stats-grid">
+                <div className="sp-stat-card">
+                  <span className="sp-stat-lbl">Now Serving</span>
+                  <span className="sp-stat-val">{status.serving?.tokenNumber || '—'}</span>
+                </div>
+                <div className="sp-stat-card">
+                  <span className="sp-stat-lbl">People Ahead</span>
+                  <span className="sp-stat-val">{status.peopleAhead}</span>
+                </div>
+                <div className="sp-stat-card">
+                  <span className="sp-stat-lbl">People Behind</span>
+                  <span className="sp-stat-val">{status.peopleBehind}</span>
+                </div>
+                <div className="sp-stat-card">
+                  <span className="sp-stat-lbl">Estimated Wait</span>
+                  <span className="sp-stat-val">{status.estimatedWait} min</span>
+                </div>
               </div>
-
-              {/* Real-time status grid */}
-              {tokenStatus === 'WAITING' ? (
-                <div className="status-grid">
-                  <div className="info-card">
-                    <span className="info-lbl">Currently Serving</span>
-                    <span className="info-val">{status.serving?.tokenNumber || 'None'}</span>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-lbl">People Ahead</span>
-                    <span className="info-val">{status.peopleAhead}</span>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-lbl">People Behind</span>
-                    <span className="info-val">{status.peopleBehind}</span>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-lbl">Estimated Wait</span>
-                    <span className="info-val">{status.estimatedWait} min</span>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-lbl">Queue Status</span>
-                    <span className="info-val active-dot">● Active</span>
-                  </div>
+            ) : (
+              <div className="sp-stats-grid single">
+                <div className="sp-stat-card wide">
+                  <span className="sp-stat-lbl">Status</span>
+                  <span className={`sp-stat-val status-${ts}`}>{ts}</span>
                 </div>
-              ) : (
-                <div className="status-single">
-                  <div className="info-card">
-                    <span className="info-lbl">Your Token Status</span>
-                    <span className={`info-val status-${(tokenStatus || '').toLowerCase()}`}>
-                      {STATUS_BADGE[tokenStatus] || tokenStatus}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </>
+              </div>
+            )
           ) : null}
 
           {/* Actions */}
-          <div className="token-actions">
-            {tokenStatus === 'WAITING' && (
-              <button className="cancel-token-btn" onClick={handleCancelToken} disabled={cancelling}>
-                {cancelling ? '⏳ Cancelling...' : '✖ Cancel My Token'}
+          <div className="sp-actions">
+            {ts === 'WAITING' && (
+              <button className="sp-cancel-btn" onClick={handleCancel} disabled={cancelling}>
+                {cancelling ? 'Cancelling...' : 'Cancel Token'}
               </button>
             )}
-            <button className="new-token-btn" onClick={() => { setTokenId(null); setTokenData(null); setError(null); setBanner(null); }}>
-              + Get Another Token
+            <button className="sp-new-btn" onClick={() => { setTokenId(null); setTokenData(null); setError(null); setBanner(null); }}>
+              Get Another Token
             </button>
           </div>
         </div>

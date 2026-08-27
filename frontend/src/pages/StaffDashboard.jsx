@@ -1,242 +1,172 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getServices, completeToken, toggleService } from '../services/api';
-import { useQueueStatus } from '../hooks/useQueue';
-import { useAnalytics } from '../hooks/useQueue';
+import { getAnalytics, getServices, completeToken, toggleService } from '../services/api';
 import { connectSocket } from '../services/socket';
 import './StaffDashboard.css';
 
+const serviceIcons = { Canteen: '🍽️', Library: '📚', Office: '🏛️', Counter: '💳' };
+
 const StaffDashboard = () => {
   const navigate = useNavigate();
+  const [analytics, setAnalytics] = useState(null);
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [completing, setCompleting] = useState(false);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
+  const [calling, setCalling] = useState(false);
+  const [toggling, setToggling] = useState(null);
 
-  const { queue, loading: queueLoading, refetch } = useQueueStatus(selectedService?._id);
-  const { analytics, refetch: refetchAnalytics } = useAnalytics(selectedService?._id);
-
-  useEffect(() => {
-    connectSocket();
-    getServices()
-      .then((data) => {
-        setServices(data);
-        if (data.length > 0) setSelectedService(data[0]);
-      })
-      .catch(() => setError('Failed to load services'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const handleComplete = async () => {
-    if (!selectedService || !queue?.serving) return;
+  const fetchData = useCallback(async () => {
     try {
-      setCompleting(true);
-      setError(null);
-      const result = await completeToken(selectedService._id);
-      setMessage(result.message);
-      refetch();
-      refetchAnalytics();
-      setTimeout(() => setMessage(null), 5000);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to complete token');
-    } finally {
-      setCompleting(false);
-    }
-  };
+      const [a, s] = await Promise.all([getAnalytics(), getServices()]);
+      setAnalytics(a); setServices(s);
+      if (s.length > 0 && !selectedService) setSelectedService(s[0]);
+      else if (selectedService) {
+        const updated = s.find((sv) => sv._id === selectedService._id);
+        if (updated) setSelectedService(updated);
+      }
+    } catch {} finally { setLoading(false); }
+  }, [selectedService]);
 
-  const handleToggleService = async () => {
-    if (!selectedService) return;
-    try {
-      setError(null);
-      const updated = await toggleService(selectedService._id);
-      setSelectedService(updated);
-      setServices((prev) => prev.map((s) => (s._id === updated._id ? updated : s)));
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update service status');
-    }
-  };
+  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { const socket = connectSocket(); socket.on('token-updated', fetchData); socket.on('token-created', fetchData); socket.on('token-cancelled', fetchData); return () => { socket.off('token-updated'); socket.off('token-created'); socket.off('token-cancelled'); }; }, [fetchData]);
 
-  const handleSelectService = (e) => {
-    const svc = services.find((s) => s._id === e.target.value);
-    setSelectedService(svc);
-    setMessage(null);
-    setError(null);
-  };
+  const handleCallNext = async () => { if (!selectedService?._id) return; try { setCalling(true); await completeToken(selectedService._id); await fetchData(); } catch {} finally { setCalling(false); } };
+  const handleToggleService = async (svc) => { try { setToggling(svc._id); await toggleService(svc._id); await fetchData(); } catch {} finally { setToggling(null); } };
 
-  if (loading) return <div className="sd-loading">⏳ Loading Operator Dashboard...</div>;
+  if (loading) return <div className="sd-loader">Loading dashboard...</div>;
 
   return (
-    <div className="staff-page">
-      {/* Top Header Bar */}
-      <div className="sd-header-bar">
-        <div className="sd-title-group">
-          <button className="sd-back-btn" onClick={() => navigate('/')}>
-            ← Back to Home
+    <div className="sd">
+      {/* Header */}
+      <div className="sd-top">
+        <div className="sd-top-left">
+          <h1>Staff Dashboard</h1>
+          <p>Manage your queue in real time</p>
+        </div>
+        <div className="sd-top-right">
+          <button className="sd-sync-btn" onClick={fetchData}>↻ Refresh</button>
+          <button className="sd-home-btn" onClick={() => navigate('/')}>← Home</button>
+        </div>
+      </div>
+
+      {/* Overview stats */}
+      {analytics && (
+        <div className="sd-overview">
+          {[
+            { label: 'Total Tokens Today', value: analytics.totalTokens ?? 0, color: '#2563eb' },
+            { label: 'Currently Waiting', value: analytics.waitingTokens ?? 0, color: '#f59e0b' },
+            { label: 'Avg Wait Time', value: `${analytics.averageWaitTime ?? 0}m`, color: '#0d9488' },
+            { label: 'Completed Today', value: analytics.completedTokens ?? 0, color: '#16a34a' },
+          ].map((stat) => (
+            <div key={stat.label} className="sd-stat">
+              <span className="sd-stat-val" style={{ color: stat.color }}>{stat.value}</span>
+              <span className="sd-stat-lbl">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Service selector */}
+      <div className="sd-svc-bar">
+        {services.map((s) => (
+          <button key={s._id} className={`sd-svc-tab ${s._id === selectedService?._id ? 'active' : ''}`}
+            onClick={() => setSelectedService(s)}>
+            <span className="sd-svc-tab-icon">{serviceIcons[s.name] || '🏢'}</span>
+            {s.name}
           </button>
-          <h2>🛡️ Staff Operator Control Center</h2>
-        </div>
-
-        <div className="sd-selector-box">
-          <label>Service:</label>
-          <select
-            value={selectedService?._id || ''}
-            onChange={handleSelectService}
-          >
-            {services.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name} ({s.code}) {s.isOpen ? '' : '· CLOSED'}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {selectedService && (
-          <div className="sd-status-bar">
-            <div className="sd-status-info">
-              <span className={`sd-status-dot ${selectedService.isOpen ? 'open' : 'closed'}`}></span>
-              <span className="sd-status-label">
-                {selectedService.isOpen ? 'SERVICE OPEN' : 'SERVICE CLOSED'}
-              </span>
-              <span className="sd-status-nowserving">
-                Current: {queue?.serving?.tokenNumber || '—'} · Waiting: {queue?.waitingCount ?? 0}
-              </span>
-            </div>
-            <button className="sd-status-toggle" onClick={handleToggleService}>
-              {selectedService.isOpen ? 'Close Service' : 'Open Service'}
-            </button>
-          </div>
-        )}
+        ))}
       </div>
 
-      {error && <div className="sd-error">⚠️ {error}</div>}
-      {message && <div className="sd-success">✅ {message}</div>}
-
-      <div className="sd-content">
-        {queueLoading ? (
-          <div className="sd-loading">🔄 Syncing queue control panel...</div>
-        ) : queue ? (
-          <div className="sd-grid">
-            {/* Main column: queue management */}
-            <div className="sd-main-col">
-              {/* Currently Serving Hero Card */}
-              <div className="sd-current-card">
-                <div className="sd-card-header">
-                  <span className="sd-card-label">CURRENTLY SERVING</span>
-                  <span className="sd-counter-badge">{selectedService?.name} Counter</span>
-                </div>
-
-                {queue.serving ? (
-                  <div className="sd-serving-box">
-                    <span className="sd-serving-num">{queue.serving.tokenNumber}</span>
-                    <span className="sd-serving-status">In Progress</span>
-                  </div>
-                ) : (
-                  <div className="sd-no-token-box">
-                    <span className="sd-no-token">No Token Currently Being Served</span>
-                    <span className="sd-no-token-sub">Next student will be called when queue advances.</span>
-                  </div>
-                )}
+      {selectedService && (
+        <div className="sd-main">
+          {/* Left: Current token */}
+          <div className="sd-current">
+            <div className="sd-current-head">
+              <span className="sd-current-svc">{serviceIcons[selectedService.name] || '🏢'} {selectedService.name}</span>
+              <div className="sd-current-head-btns">
+                <button className={`sd-toggle-btn ${selectedService.isOpen ? 'on' : 'off'}`}
+                  onClick={() => handleToggleService(selectedService)} disabled={toggling === selectedService._id}>
+                  {toggling === selectedService._id ? '...' : selectedService.isOpen ? '● Open' : '● Closed'}
+                </button>
+                <button className="sd-call-btn" onClick={handleCallNext} disabled={calling || !selectedService.isOpen}>
+                  {calling ? 'Calling...' : 'Next ▸'}
+                </button>
               </div>
+            </div>
 
-              {/* Complete Token Action Button */}
-              <button
-                className="sd-complete-btn"
-                onClick={handleComplete}
-                disabled={completing || !queue.serving}
-              >
-                {completing ? '⏳ Advancing Queue...' : '✅ Complete Current Token'}
-              </button>
+            <div className="sd-big-token">
+              <span className="sd-big-label">NOW SERVING</span>
+              {selectedService.serving?.tokenNumber ? (
+                <span className="sd-big-num">{selectedService.serving.tokenNumber}</span>
+              ) : (
+                <span className="sd-big-num none">—</span>
+              )}
+            </div>
 
-              {/* Waiting List Card */}
-              <div className="sd-queue-card">
-                <div className="sd-queue-header">
-                  <span className="sd-card-label-dark">WAITING QUEUE</span>
-                  <span className="sd-queue-count">{queue.waiting.length} in line</span>
-                </div>
+            <div className="sd-mini-stats">
+              <div className="sd-mini-stat">
+                <span className="sd-mini-stat-val">{selectedService.waitingCount ?? 0}</span>
+                <span className="sd-mini-stat-lbl">Waiting</span>
+              </div>
+              <div className="sd-mini-stat">
+                <span className="sd-mini-stat-val">{selectedService.averageServiceTime || '—'}m</span>
+                <span className="sd-mini-stat-lbl">Avg Time</span>
+              </div>
+              <div className="sd-mini-stat">
+                <span className="sd-mini-stat-val">{selectedService.serving ? 'YES' : 'NO'}</span>
+                <span className="sd-mini-stat-lbl">Serving</span>
+              </div>
+            </div>
+          </div>
 
-                {queue.waiting.length === 0 ? (
-                  <div className="sd-empty-box">
-                    <span>🎉 Queue line is empty!</span>
-                  </div>
-                ) : (
-                  <div className="sd-waiting-list">
-                    {queue.waiting.map((t, i) => (
-                      <div key={t._id} className="sd-wait-item">
-                        <span className="sd-wait-pos">#{i + 1}</span>
-                        <span className="sd-wait-num">{t.tokenNumber}</span>
-                        <span className="sd-wait-time">Waiting</span>
+          {/* Right: Queue list */}
+          <div className="sd-queue">
+            <h3>Waiting Queue</h3>
+            <div className="sd-queue-list">
+              {!selectedService.queue || selectedService.queue.length === 0 ? (
+                <div className="sd-queue-empty">No one in queue</div>
+              ) : (
+                selectedService.queue.map((token, i) => (
+                  <div key={token._id || i} className={`sd-queue-item ${token.status === 'SERVING' ? 'serving' : token.status === 'WAITING' ? 'waiting' : token.status === 'COMPLETED' ? 'done' : 'cancelled'}`}>
+                    <div className="sd-queue-item-left">
+                      <span className="sd-queue-pos">{token.status === 'SERVING' ? '▶' : `#${i + 1}`}</span>
+                      <div>
+                        <strong>{token.tokenNumber}</strong>
+                        <span className="sd-queue-time">
+                          {token.status === 'SERVING' ? 'SERVING NOW' :
+                           token.status === 'COMPLETED' ? 'DONE' :
+                           token.status === 'CANCELLED' ? 'CANCELLED' :
+                           new Date(token.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Side column: analytics */}
-            <div className="sd-side-col">
-              <div className="sd-analytics-card">
-                <div className="sd-ana-header">
-                  <span className="sd-card-label-dark">TODAY'S QUEUE</span>
-                </div>
-                <div className="sd-ana-grid">
-                  <div className="sd-ana-item">
-                    <span className="sd-ana-val">{analytics?.tokensServed ?? '—'}</span>
-                    <span className="sd-ana-lbl">Tokens Served</span>
-                  </div>
-                  <div className="sd-ana-item">
-                    <span className="sd-ana-val">{analytics?.currentlyWaiting ?? '—'}</span>
-                    <span className="sd-ana-lbl">Currently Waiting</span>
-                  </div>
-                  <div className="sd-ana-item">
-                    <span className="sd-ana-val">{analytics?.currentlyServing || '—'}</span>
-                    <span className="sd-ana-lbl">Currently Serving</span>
-                  </div>
-                  <div className="sd-ana-item">
-                    <span className="sd-ana-val">{analytics ? `${analytics.averageWait} min` : '—'}</span>
-                    <span className="sd-ana-lbl">Average Wait</span>
-                  </div>
-                  <div className="sd-ana-item">
-                    <span className="sd-ana-val">{analytics ? `${analytics.averageService} min` : '—'}</span>
-                    <span className="sd-ana-lbl">Average Service</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick stats */}
-              <div className="sd-stats">
-                <div className="sd-stat waiting">
-                  <span className="sd-stat-val">{queue.waitingCount}</span>
-                  <span className="sd-stat-lbl">Waiting</span>
-                </div>
-                <div className="sd-stat completed">
-                  <span className="sd-stat-val">{queue.completedToday}</span>
-                  <span className="sd-stat-lbl">Served Today</span>
-                </div>
-              </div>
-
-              {/* Service status overview */}
-              <div className="sd-services-card">
-                <div className="sd-card-label-dark">SERVICE STATUS</div>
-                <div className="sd-service-list">
-                  {services.map((s) => (
-                    <div key={s._id} className="sd-service-row">
-                      <span className="sd-service-name">{s.name}</span>
-                      <span className={`sd-service-dot ${s.isOpen ? 'open' : 'closed'}`}></span>
-                      <span className="sd-service-open">{s.isOpen ? 'Open' : 'Closed'}</span>
-                      <span className="sd-service-now">Now: {s.serving?.tokenNumber || '—'}</span>
-                      <span className="sd-service-wait">Waiting: {s.waitingCount ?? 0}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <span className={`sd-queue-badge ${token.status?.toLowerCase()}`}>{token.status}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
-        ) : (
-          <p className="sd-empty">No queue data available</p>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Hourly chart placeholder */}
+      {analytics?.hourlyData && (
+        <div className="sd-chart">
+          <h3>Hourly Queue Activity</h3>
+          <div className="sd-chart-bars">
+            {analytics.hourlyData.map((h, i) => {
+              const max = Math.max(...analytics.hourlyData.map((x) => x.count || 0), 1);
+              return (
+                <div key={i} className="sd-chart-col">
+                  <span className="sd-chart-count">{h.count || 0}</span>
+                  <div className="sd-chart-bar" style={{ height: `${((h.count || 0) / max) * 140}px` }}></div>
+                  <span className="sd-chart-hr">{h.hour}:00</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
