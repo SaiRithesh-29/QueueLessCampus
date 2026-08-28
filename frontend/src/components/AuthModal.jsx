@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './AuthModal.css';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login', message }) => {
@@ -8,6 +8,16 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login', mess
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setError('');
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 

@@ -288,6 +288,7 @@ const StudentPage = () => {
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
+        initialMode="register"
         message={authMessage}
       />
     </div>
