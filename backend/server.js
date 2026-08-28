@@ -8,6 +8,7 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const serviceRoutes = require('./routes/serviceRoutes');
 const tokenRoutes = require('./routes/tokenRoutes');
+const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const seed = require('./seed');
 
@@ -43,6 +44,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/tokens', tokenRoutes);
 

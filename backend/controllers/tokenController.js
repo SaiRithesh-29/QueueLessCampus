@@ -70,7 +70,8 @@ const createToken = async (req, res) => {
       service: actualServiceId,
       status: tokenStatus,
       position: activeCount + 1,
-      servingAt: tokenStatus === 'SERVING' ? new Date() : null
+      servingAt: tokenStatus === 'SERVING' ? new Date() : null,
+      user: req.user ? req.user._id : null
     });
 
     const populated = await token.populate('service');
@@ -285,6 +286,10 @@ const cancelToken = async (req, res) => {
 
     if (token.status === 'SERVING') {
       return res.status(400).json({ message: 'Token is currently being served and cannot be cancelled.' });
+    }
+
+    if (req.user && token.user && token.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only cancel your own tokens.' });
     }
 
     token.status = 'CANCELLED';

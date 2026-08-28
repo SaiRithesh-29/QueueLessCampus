@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getServices } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from './AuthModal';
 import './Navbar.css';
 
 const DEFAULT_SERVICES = [
@@ -13,9 +15,11 @@ const DEFAULT_SERVICES = [
 const Navbar = ({ onOpenAbout, onOpenSupport }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, login, register, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [services, setServices] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -55,6 +59,14 @@ const Navbar = ({ onOpenAbout, onOpenSupport }) => {
       navigate(`/student/${found._id}`);
     } else {
       navigate(`/student/${serviceKey}`);
+    }
+  };
+
+  const handleAuthSuccess = async (type, credentials) => {
+    if (type === 'login') {
+      await login(credentials.email, credentials.password);
+    } else {
+      await register(credentials.name, credentials.email, credentials.password);
     }
   };
 
@@ -113,9 +125,21 @@ const Navbar = ({ onOpenAbout, onOpenSupport }) => {
 
         {/* Right Actions */}
         <div className="ql-actions">
-          <button className="ql-btn-solid" onClick={() => navigate('/staff')}>
-            Staff Dashboard <span className="ql-arrow">→</span>
+          <button className="ql-btn-staff" onClick={() => navigate('/staff')}>
+            Staff Dashboard
           </button>
+          {user ? (
+            <>
+              <span className="ql-user-greeting">Hi, {user.name}</span>
+              <button className="ql-btn-logout" onClick={() => { logout(); navigate('/'); }}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <button className="ql-btn-solid" onClick={() => setAuthOpen(true)}>
+              Login <span className="ql-arrow">→</span>
+            </button>
+          )}
           <button className="ql-btn-support" onClick={onOpenSupport}>
             <span className="ql-question-mark">?</span>
             Support
@@ -138,10 +162,22 @@ const Navbar = ({ onOpenAbout, onOpenSupport }) => {
           <button onClick={() => handleSelectService('counter')}>🏢 Counter</button>
           <button onClick={() => handleSelectService('office')}>📋 Offices</button>
           <button onClick={() => { setMobileMenuOpen(false); onOpenAbout(); }}>ℹ️ About</button>
-          <button onClick={() => { setMobileMenuOpen(false); onOpenSupport(); }}>❓ Support</button>
           <button onClick={() => { setMobileMenuOpen(false); navigate('/staff'); }}>📊 Staff Dashboard</button>
+          <button onClick={() => { setMobileMenuOpen(false); onOpenSupport(); }}>❓ Support</button>
+          {user ? (
+            <button onClick={() => { setMobileMenuOpen(false); logout(); navigate('/'); }}>🚪 Logout ({user.name})</button>
+          ) : (
+            <button onClick={() => { setMobileMenuOpen(false); setAuthOpen(true); }}>🔑 Login</button>
+          )}
         </div>
       )}
+
+      <AuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        message=""
+      />
     </header>
   );
 };

@@ -5,9 +5,10 @@ const {
   getServiceById,
   toggleServiceStatus
 } = require('../controllers/serviceController');
+const { protect, authorize } = require('../middleware/auth');
 
 router.get('/', getServices);
 router.get('/:id', getServiceById);
-router.post('/:id/toggle', toggleServiceStatus);
+router.post('/:id/toggle', protect, authorize('staff', 'admin'), toggleServiceStatus);
 
 module.exports = router;

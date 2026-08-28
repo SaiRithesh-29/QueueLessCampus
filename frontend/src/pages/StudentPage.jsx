@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getServices, createToken, cancelToken } from '../services/api';
 import { useTokenStatus } from '../hooks/useQueue';
+import { useAuth } from '../context/AuthContext';
 import { connectSocket } from '../services/socket';
 import { notifyApproaching, notifyYourTurn, requestNotificationPermission } from '../services/notifications';
+import AuthModal from '../components/AuthModal';
 import './StudentPage.css';
 
 const serviceIcons = { Canteen: '🍽️', Library: '📚', Office: '🏛️', Counter: '💳' };
@@ -17,6 +19,7 @@ const serviceDescs = {
 const StudentPage = () => {
   const { serviceId } = useParams();
   const navigate = useNavigate();
+  const { user, login, register } = useAuth();
   const [services, setServices] = useState([]);
   const [service, setService] = useState(null);
   const [tokenId, setTokenId] = useState(null);
@@ -27,6 +30,8 @@ const StudentPage = () => {
   const [error, setError] = useState(null);
   const [banner, setBanner] = useState(null);
   const [notifEnabled, setNotifEnabled] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMessage, setAuthMessage] = useState('');
   const prevStatusRef = useRef(null);
 
   const { status, loading: statusLoading } = useTokenStatus(tokenId);
@@ -74,6 +79,11 @@ const StudentPage = () => {
 
   const handleJoin = async () => {
     if (!service?._id) return;
+    if (!user) {
+      setAuthMessage('Please log in to get a queue token and track your place in line.');
+      setAuthOpen(true);
+      return;
+    }
     try {
       setCreating(true); setError(null);
       const data = await createToken(service._id);
@@ -81,6 +91,24 @@ const StudentPage = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to join queue');
     } finally { setCreating(false); }
+  };
+
+  const handleAuthSuccess = async (type, credentials) => {
+    if (type === 'login') {
+      await login(credentials.email, credentials.password);
+    } else {
+      await register(credentials.name, credentials.email, credentials.password);
+    }
+    setAuthOpen(false);
+    if (service?._id) {
+      try {
+        setCreating(true); setError(null);
+        const data = await createToken(service._id);
+        setTokenData(data); setTokenId(data.token._id); setBanner(null);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to join queue');
+      } finally { setCreating(false); }
+    }
   };
 
   const handleCancel = async () => {
@@ -255,6 +283,13 @@ const StudentPage = () => {
           </div>
         </div>
       )}
+
+      <AuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        message={authMessage}
+      />
     </div>
   );
 };

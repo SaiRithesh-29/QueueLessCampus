@@ -10,6 +10,11 @@ const tokenSchema = new mongoose.Schema({
     ref: 'Service',
     required: true
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   status: {
     type: String,
     enum: ['WAITING', 'SERVING', 'COMPLETED', 'CANCELLED'],
