@@ -247,6 +247,10 @@
   background: #16a34a;
 }
 
+.hp-fc-dot.closed {
+  background: #dc2626;
+}
+
 /* ── How It Works ── */
 .hp-how {
   background: #fff;
