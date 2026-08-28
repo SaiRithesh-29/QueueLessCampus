@@ -10,18 +10,23 @@
 
 /* ── Hero ── */
 .hp-hero {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4rem;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 5rem 2rem 4rem;
+  padding: 7rem 2rem 5rem;
+  min-height: 600px;
+  overflow: visible;
 }
 
-.hp-hero-inner {
-  flex: 1;
-  max-width: 540px;
+.hp-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 600px;
+  text-align: center;
+  margin: 0 auto;
 }
 
 .hp-badge {
@@ -47,26 +52,25 @@
 }
 
 .hp-sub {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.5;
-  margin-bottom: 0.75rem;
-}
-
-.hp-sub2 {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #64748b;
   line-height: 1.6;
   margin-bottom: 2rem;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .hp-hero-btns {
   display: flex;
   gap: 0.75rem;
+  justify-content: center;
 }
 
 .hp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.85rem 2rem;
   background: #0d9488;
   color: #fff;
@@ -80,6 +84,10 @@
 .hp-btn-primary:hover {
   background: #0f766e;
   transform: translateY(-1px);
+}
+
+.hp-btn-icon {
+  font-size: 1.1rem;
 }
 
 .hp-btn-outline {
@@ -98,61 +106,145 @@
   background: #f8fafc;
 }
 
-/* Hero visual – token preview */
-.hp-hero-visual {
-  flex: 0 0 auto;
+/* ═══════════════════════════════════════════
+   FLOATING QUEUE CARDS — DISPLAY ONLY
+   ═══════════════════════════════════════════ */
+
+.hp-floating-card {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
+  width: 210px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  animation: floatCard 6s ease-in-out infinite;
 }
 
-.hp-token-preview {
-  background: #0f172a;
-  border-radius: 20px;
-  padding: 2rem 2.5rem;
-  text-align: center;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
-  min-width: 300px;
+.hp-floating-card:hover {
+  transform: none;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  cursor: default;
 }
 
-.hp-token-label {
-  display: block;
-  font-size: 0.65rem;
+/* Card positions */
+.hp-fc-1 {
+  top: 60px;
+  left: 0;
+  animation-delay: 0s;
+}
+
+.hp-fc-2 {
+  top: 40px;
+  right: 0;
+  animation-delay: 1.5s;
+}
+
+.hp-fc-3 {
+  bottom: 80px;
+  left: 20px;
+  animation-delay: 3s;
+}
+
+.hp-fc-4 {
+  bottom: 60px;
+  right: 20px;
+  animation-delay: 4.5s;
+}
+
+@keyframes floatCard {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.hp-fc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.hp-fc-icon {
+  font-size: 1.3rem;
+}
+
+.hp-fc-name {
+  font-size: 0.85rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 2px;
-  margin-bottom: 0.5rem;
+  color: #0f172a;
 }
 
-.hp-token-number {
+.hp-fc-serving {
+  margin-bottom: 0.65rem;
+}
+
+.hp-fc-serving-label {
   display: block;
-  font-size: 4rem;
-  font-weight: 900;
-  color: #2dd4bf;
-  letter-spacing: -2px;
-  line-height: 1;
-  margin-bottom: 1rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.1rem;
 }
 
-.hp-token-meta {
+.hp-fc-serving-num {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #0f172a;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.hp-fc-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.hp-fc-stat {
   display: flex;
   flex-direction: column;
+}
+
+.hp-fc-stat-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.hp-fc-stat-lbl {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.hp-fc-status {
+  display: flex;
+  align-items: center;
   gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.hp-token-meta span {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.hp-token-meta strong {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.hp-token-status {
-  display: inline-block;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: #fbbf24;
-  letter-spacing: 1px;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hp-fc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hp-fc-dot.open {
+  background: #16a34a;
 }
 
 /* ── How It Works ── */
@@ -375,24 +467,44 @@
 }
 
 /* ── Responsive ── */
-@media (max-width: 900px) {
-  .hp-hero {
-    flex-direction: column;
-    gap: 2.5rem;
-    padding: 3rem 1.5rem 2.5rem;
-    text-align: center;
+@media (max-width: 1100px) {
+  .hp-floating-card {
+    width: 180px;
+    padding: 0.9rem 1rem;
   }
-  .hp-hero-inner { max-width: 100%; }
-  .hp-title { font-size: 2.75rem; }
-  .hp-hero-btns { justify-content: center; }
-  .hp-hero-visual { width: 100%; max-width: 340px; }
-  .hp-token-preview { min-width: 0; width: 100%; }
-  .hp-token-number { font-size: 3.2rem; }
-  .hp-steps { gap: 1rem; }
-  .hp-step { min-width: 140px; }
+  .hp-fc-serving-num { font-size: 1.2rem; }
+  .hp-fc-stat-val { font-size: 0.85rem; }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px) {
+  .hp-hero {
+    padding: 5rem 1.5rem 4rem;
+    min-height: auto;
+  }
+  .hp-title { font-size: 2.75rem; }
+
+  .hp-floating-card {
+    width: 160px;
+    padding: 0.75rem 0.9rem;
+  }
+  .hp-fc-1 { top: 10px; left: -10px; }
+  .hp-fc-2 { top: 0; right: -10px; }
+  .hp-fc-3 { bottom: 40px; left: 0; }
+  .hp-fc-4 { bottom: 20px; right: 0; }
+  .hp-fc-name { font-size: 0.78rem; }
+  .hp-fc-serving-num { font-size: 1.1rem; }
+  .hp-fc-stat-val { font-size: 0.8rem; }
+  .hp-fc-stat-lbl { font-size: 0.55rem; }
+  .hp-fc-status { font-size: 0.6rem; }
+}
+
+@media (max-width: 700px) {
+  .hp-floating-card {
+    display: none;
+  }
+  .hp-hero {
+    padding: 4rem 1.5rem 3rem;
+  }
   .hp-title { font-size: 2.25rem; letter-spacing: -1px; }
   .hp-sub { font-size: 1rem; }
   .hp-hero-btns { flex-direction: column; align-items: center; }
@@ -401,4 +513,10 @@
   .hp-step { max-width: 280px; }
   .hp-svc-grid { grid-template-columns: 1fr; }
   .hp-svc-stats { flex-direction: column; gap: 0.5rem; }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  .hp-floating-card {
+    display: block;
+  }
 }
