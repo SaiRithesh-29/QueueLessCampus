@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getServices, createToken, cancelToken } from '../services/api';
-import { useTokenStatus } from '../hooks/useQueue';
+import { useTokenStatus, useQueueStatus } from '../hooks/useQueue';
 import { useAuth } from '../context/AuthContext';
 import { connectSocket } from '../services/socket';
 import { notifyApproaching, notifyYourTurn, requestNotificationPermission } from '../services/notifications';
@@ -35,6 +35,7 @@ const StudentPage = () => {
   const prevStatusRef = useRef(null);
 
   const { status, loading: statusLoading } = useTokenStatus(tokenId);
+  const { queue: queueStatus } = useQueueStatus(tokenId ? null : serviceId);
 
   useEffect(() => {
     connectSocket();
@@ -52,6 +53,29 @@ const StudentPage = () => {
       })
       .catch(() => setError('Failed to load services'))
       .finally(() => setLoading(false));
+  }, [serviceId]);
+
+  // Real-time service status updates
+  useEffect(() => {
+    const socket = connectSocket();
+    const handleServiceUpdate = () => {
+      getServices().then((list) => {
+        setServices(list);
+        const key = (serviceId || '').toLowerCase();
+        const found = list.find((s) =>
+          s._id === serviceId ||
+          (s.code && s.code.toLowerCase() === key) ||
+          s.name.toLowerCase().includes(key)
+        );
+        if (found) setService(found);
+      }).catch(() => {});
+    };
+    socket.on('service:update', handleServiceUpdate);
+    socket.on('queue:update', handleServiceUpdate);
+    return () => {
+      socket.off('service:update', handleServiceUpdate);
+      socket.off('queue:update', handleServiceUpdate);
+    };
   }, [serviceId]);
 
   // Notifications on status change
@@ -183,15 +207,15 @@ const StudentPage = () => {
           <div className="sp-join-stats">
             <div className="sp-join-stat">
               <span className="sp-join-stat-label">Currently Serving</span>
-              <span className="sp-join-stat-val">{status?.serving?.tokenNumber || '—'}</span>
+              <span className="sp-join-stat-val">{queueStatus?.serving?.tokenNumber || '—'}</span>
             </div>
             <div className="sp-join-stat">
               <span className="sp-join-stat-label">People Waiting</span>
-              <span className="sp-join-stat-val">{status?.peopleAhead ?? service?.waitingCount ?? 0}</span>
+              <span className="sp-join-stat-val">{queueStatus?.waitingCount ?? 0}</span>
             </div>
             <div className="sp-join-stat">
               <span className="sp-join-stat-label">Estimated Wait</span>
-              <span className="sp-join-stat-val">{status?.estimatedWait ?? 0} min</span>
+              <span className="sp-join-stat-val">{(queueStatus?.waitingCount ?? 0) * (service?.averageServiceTime || 5)} min</span>
             </div>
           </div>
 

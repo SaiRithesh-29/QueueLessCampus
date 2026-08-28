@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAnalytics, getServices, completeToken, toggleService } from '../services/api';
+import { getAllAnalytics, getServices, getQueueStatus, completeToken, toggleService } from '../services/api';
 import { connectSocket } from '../services/socket';
 import './StaffDashboard.css';
 
@@ -11,14 +11,16 @@ const StaffDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
+  const [queueData, setQueueData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [calling, setCalling] = useState(false);
   const [toggling, setToggling] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [a, s] = await Promise.all([getAnalytics(), getServices()]);
-      setAnalytics(a); setServices(s);
+      const [a, s] = await Promise.all([getAllAnalytics(), getServices()]);
+      setAnalytics(a);
+      setServices(s);
       if (s.length > 0 && !selectedService) setSelectedService(s[0]);
       else if (selectedService) {
         const updated = s.find((sv) => sv._id === selectedService._id);
@@ -27,13 +29,49 @@ const StaffDashboard = () => {
     } catch {} finally { setLoading(false); }
   }, [selectedService]);
 
-  useEffect(() => { fetchData(); }, []);
-  useEffect(() => { const socket = connectSocket(); socket.on('token-updated', fetchData); socket.on('token-created', fetchData); socket.on('token-cancelled', fetchData); return () => { socket.off('token-updated'); socket.off('token-created'); socket.off('token-cancelled'); }; }, [fetchData]);
+  const fetchQueue = useCallback(async () => {
+    if (!selectedService?._id) return;
+    try {
+      const data = await getQueueStatus(selectedService._id);
+      setQueueData(data);
+    } catch {}
+  }, [selectedService]);
 
-  const handleCallNext = async () => { if (!selectedService?._id) return; try { setCalling(true); await completeToken(selectedService._id); await fetchData(); } catch {} finally { setCalling(false); } };
-  const handleToggleService = async (svc) => { try { setToggling(svc._id); await toggleService(svc._id); await fetchData(); } catch {} finally { setToggling(null); } };
+  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchQueue(); }, [fetchQueue]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    const handleUpdate = () => { fetchData(); fetchQueue(); };
+    socket.on('queue:update', handleUpdate);
+    socket.on('service:update', handleUpdate);
+    return () => {
+      socket.off('queue:update', handleUpdate);
+      socket.off('service:update', handleUpdate);
+    };
+  }, [fetchData, fetchQueue]);
+
+  const handleCallNext = async () => {
+    if (!selectedService?._id) return;
+    try {
+      setCalling(true);
+      await completeToken(selectedService._id);
+      await fetchData();
+      await fetchQueue();
+    } catch {} finally { setCalling(false); }
+  };
+
+  const handleToggleService = async (svc) => {
+    try {
+      setToggling(svc._id);
+      await toggleService(svc._id);
+      await fetchData();
+    } catch {} finally { setToggling(null); }
+  };
 
   if (loading) return <div className="sd-loader">Loading dashboard...</div>;
+
+  const waitingList = queueData?.waiting || [];
 
   return (
     <div className="sd">
@@ -44,7 +82,7 @@ const StaffDashboard = () => {
           <p>Manage your queue in real time</p>
         </div>
         <div className="sd-top-right">
-          <button className="sd-sync-btn" onClick={fetchData}>↻ Refresh</button>
+          <button className="sd-sync-btn" onClick={() => { fetchData(); fetchQueue(); }}>↻ Refresh</button>
           <button className="sd-home-btn" onClick={() => navigate('/')}>← Home</button>
         </div>
       </div>
@@ -113,8 +151,8 @@ const StaffDashboard = () => {
                 <span className="sd-mini-stat-lbl">Avg Time</span>
               </div>
               <div className="sd-mini-stat">
-                <span className="sd-mini-stat-val">{selectedService.serving ? 'YES' : 'NO'}</span>
-                <span className="sd-mini-stat-lbl">Serving</span>
+                <span className="sd-mini-stat-val">{selectedService.estimatedWait ?? 0}m</span>
+                <span className="sd-mini-stat-lbl">Est. Wait</span>
               </div>
             </div>
           </div>
@@ -123,10 +161,10 @@ const StaffDashboard = () => {
           <div className="sd-queue">
             <h3>Waiting Queue</h3>
             <div className="sd-queue-list">
-              {!selectedService.queue || selectedService.queue.length === 0 ? (
+              {waitingList.length === 0 ? (
                 <div className="sd-queue-empty">No one in queue</div>
               ) : (
-                selectedService.queue.map((token, i) => (
+                waitingList.map((token, i) => (
                   <div key={token._id || i} className={`sd-queue-item ${token.status === 'SERVING' ? 'serving' : token.status === 'WAITING' ? 'waiting' : token.status === 'COMPLETED' ? 'done' : 'cancelled'}`}>
                     <div className="sd-queue-item-left">
                       <span className="sd-queue-pos">{token.status === 'SERVING' ? '▶' : `#${i + 1}`}</span>
@@ -145,25 +183,6 @@ const StaffDashboard = () => {
                 ))
               )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hourly chart placeholder */}
-      {analytics?.hourlyData && (
-        <div className="sd-chart">
-          <h3>Hourly Queue Activity</h3>
-          <div className="sd-chart-bars">
-            {analytics.hourlyData.map((h, i) => {
-              const max = Math.max(...analytics.hourlyData.map((x) => x.count || 0), 1);
-              return (
-                <div key={i} className="sd-chart-col">
-                  <span className="sd-chart-count">{h.count || 0}</span>
-                  <div className="sd-chart-bar" style={{ height: `${((h.count || 0) / max) * 140}px` }}></div>
-                  <span className="sd-chart-hr">{h.hour}:00</span>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

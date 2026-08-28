@@ -65,6 +65,11 @@ export const getAnalytics = async (serviceId) => {
   return response.data;
 };
 
+export const getAllAnalytics = async () => {
+  const response = await api.get('/tokens/analytics/all');
+  return response.data;
+};
+
 export const completeToken = async (serviceId) => {
   const response = await api.post(`/tokens/queue/${serviceId}/complete`);
   return response.data;

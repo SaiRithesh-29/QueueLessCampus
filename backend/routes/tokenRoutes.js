@@ -7,12 +7,14 @@ const {
   getTokenStatus,
   completeToken,
   cancelToken,
-  getAnalytics
+  getAnalytics,
+  getAllAnalytics
 } = require('../controllers/tokenController');
 const { protect, authorize } = require('../middleware/auth');
 
 // Public routes - view queue status, token status
 router.get('/queue/:serviceId', getQueueStatus);
+router.get('/analytics/all', getAllAnalytics);
 router.get('/analytics/:serviceId', getAnalytics);
 router.get('/:id/status', getTokenStatus);
 router.get('/:id', getToken);

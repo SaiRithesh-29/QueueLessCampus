@@ -375,6 +375,59 @@ const getAnalytics = async (req, res) => {
   }
 };
 
+// Analytics across all services (for staff dashboard overview)
+const getAllAnalytics = async (req, res) => {
+  try {
+    const services = await Service.find();
+    const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+
+    let totalTokens = 0;
+    let waitingTokens = 0;
+    let completedTokens = 0;
+    let totalWait = 0;
+    let waitCount = 0;
+
+    for (const svc of services) {
+      const served = await Token.countDocuments({
+        service: svc._id,
+        status: 'COMPLETED',
+        completedAt: { $gte: startOfDay }
+      });
+      const waiting = await Token.countDocuments({
+        service: svc._id,
+        status: 'WAITING'
+      });
+      totalTokens += served + waiting;
+      waitingTokens += waiting;
+      completedTokens += served;
+
+      const completedDocs = await Token.find({
+        service: svc._id,
+        status: 'COMPLETED',
+        completedAt: { $gte: startOfDay }
+      });
+      const waitTimes = completedDocs
+        .filter((t) => t.servingAt && t.createdAt)
+        .map((t) => (t.servingAt.getTime() - t.createdAt.getTime()) / 60000);
+      if (waitTimes.length > 0) {
+        totalWait += waitTimes.reduce((a, b) => a + b, 0);
+        waitCount += waitTimes.length;
+      }
+    }
+
+    const averageWaitTime = waitCount > 0 ? Math.round((totalWait / waitCount) * 10) / 10 : 0;
+
+    res.json({
+      totalTokens,
+      waitingTokens,
+      completedTokens,
+      averageWaitTime
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch analytics', error: error.message });
+  }
+};
+
 module.exports = {
   createToken,
   getToken,
@@ -382,5 +435,6 @@ module.exports = {
   getTokenStatus,
   completeToken,
   cancelToken,
-  getAnalytics
+  getAnalytics,
+  getAllAnalytics
 };
