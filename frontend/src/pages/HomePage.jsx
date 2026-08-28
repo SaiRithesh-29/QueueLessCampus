@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getServices } from '../services/api';
-import { connectSocket, getSocket } from '../services/socket';
+import { connectSocket } from '../services/socket';
 import './HomePage.css';
 
 const serviceIcons = { Canteen: '🍔', Library: '📚', Office: '🏢', Counter: '💳' };
@@ -14,13 +14,20 @@ const serviceDescs = {
 
 const HomePage = () => {
   const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const fetchServices = useCallback(async () => {
     try {
       const data = await getServices();
       setServices(data);
-    } catch {}
+      setError(null);
+    } catch {
+      setError('Unable to load live queue data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -37,129 +44,45 @@ const HomePage = () => {
 
   const goToService = (svc) => navigate(`/student/${svc._id}`);
 
-  const calcEstWait = (svc) => {
-    if (!svc.isOpen) return null;
-    const count = svc.waitingCount ?? 0;
-    if (count === 0) return '0 min';
-    const avg = svc.averageServiceTime || 5;
-    return `${count * avg} min`;
-  };
-
   const getIcon = (svc) => serviceIcons[svc.name] || '🏢';
   const getDesc = (svc) => serviceDescs[svc.name] || svc.description || '';
+
+  const renderFloatingCard = (svc, position) => (
+    <div className={`hp-floating-card ${position}`} aria-hidden="true">
+      <div className="hp-fc-header">
+        <span className="hp-fc-icon">{getIcon(svc)}</span>
+        <span className="hp-fc-name">{svc.name}</span>
+      </div>
+      <div className="hp-fc-serving">
+        <span className="hp-fc-serving-label">Now Serving</span>
+        <span className="hp-fc-serving-num">{svc.serving?.tokenNumber || '—'}</span>
+      </div>
+      <div className="hp-fc-stats">
+        <div className="hp-fc-stat">
+          <span className="hp-fc-stat-val">{svc.isOpen ? `${svc.estimatedWait ?? 0} min` : '—'}</span>
+          <span className="hp-fc-stat-lbl">Est. Wait</span>
+        </div>
+        <div className="hp-fc-stat">
+          <span className="hp-fc-stat-val">{svc.waitingCount ?? 0}</span>
+          <span className="hp-fc-stat-lbl">Waiting</span>
+        </div>
+      </div>
+      <div className="hp-fc-status">
+        <span className={`hp-fc-dot ${svc.isOpen ? 'open' : 'closed'}`}></span>
+        <span>{svc.isOpen ? 'OPEN' : 'CLOSED'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="hp">
       {/* ── Hero with Floating Cards ── */}
       <section className="hp-hero">
-        {/* Floating Cards — DISPLAY ONLY, NOT CLICKABLE, REAL DATA */}
-        {services.length >= 1 && (
-          <div className="hp-floating-card hp-fc-1" aria-hidden="true">
-            <div className="hp-fc-header">
-              <span className="hp-fc-icon">{getIcon(services[0])}</span>
-              <span className="hp-fc-name">{services[0].name}</span>
-            </div>
-            <div className="hp-fc-serving">
-              <span className="hp-fc-serving-label">Now Serving</span>
-              <span className="hp-fc-serving-num">{services[0].serving?.tokenNumber || '—'}</span>
-            </div>
-            <div className="hp-fc-stats">
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{calcEstWait(services[0]) || '—'}</span>
-                <span className="hp-fc-stat-lbl">Est. Wait</span>
-              </div>
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{services[0].waitingCount ?? 0}</span>
-                <span className="hp-fc-stat-lbl">Waiting</span>
-              </div>
-            </div>
-            <div className="hp-fc-status">
-              <span className={`hp-fc-dot ${services[0].isOpen ? 'open' : 'closed'}`}></span>
-              <span>{services[0].isOpen ? 'OPEN' : 'CLOSED'}</span>
-            </div>
-          </div>
-        )}
-
-        {services.length >= 2 && (
-          <div className="hp-floating-card hp-fc-2" aria-hidden="true">
-            <div className="hp-fc-header">
-              <span className="hp-fc-icon">{getIcon(services[1])}</span>
-              <span className="hp-fc-name">{services[1].name}</span>
-            </div>
-            <div className="hp-fc-serving">
-              <span className="hp-fc-serving-label">Now Serving</span>
-              <span className="hp-fc-serving-num">{services[1].serving?.tokenNumber || '—'}</span>
-            </div>
-            <div className="hp-fc-stats">
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{calcEstWait(services[1]) || '—'}</span>
-                <span className="hp-fc-stat-lbl">Est. Wait</span>
-              </div>
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{services[1].waitingCount ?? 0}</span>
-                <span className="hp-fc-stat-lbl">Waiting</span>
-              </div>
-            </div>
-            <div className="hp-fc-status">
-              <span className={`hp-fc-dot ${services[1].isOpen ? 'open' : 'closed'}`}></span>
-              <span>{services[1].isOpen ? 'OPEN' : 'CLOSED'}</span>
-            </div>
-          </div>
-        )}
-
-        {services.length >= 3 && (
-          <div className="hp-floating-card hp-fc-3" aria-hidden="true">
-            <div className="hp-fc-header">
-              <span className="hp-fc-icon">{getIcon(services[2])}</span>
-              <span className="hp-fc-name">{services[2].name}</span>
-            </div>
-            <div className="hp-fc-serving">
-              <span className="hp-fc-serving-label">Now Serving</span>
-              <span className="hp-fc-serving-num">{services[2].serving?.tokenNumber || '—'}</span>
-            </div>
-            <div className="hp-fc-stats">
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{calcEstWait(services[2]) || '—'}</span>
-                <span className="hp-fc-stat-lbl">Est. Wait</span>
-              </div>
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{services[2].waitingCount ?? 0}</span>
-                <span className="hp-fc-stat-lbl">Waiting</span>
-              </div>
-            </div>
-            <div className="hp-fc-status">
-              <span className={`hp-fc-dot ${services[2].isOpen ? 'open' : 'closed'}`}></span>
-              <span>{services[2].isOpen ? 'OPEN' : 'CLOSED'}</span>
-            </div>
-          </div>
-        )}
-
-        {services.length >= 4 && (
-          <div className="hp-floating-card hp-fc-4" aria-hidden="true">
-            <div className="hp-fc-header">
-              <span className="hp-fc-icon">{getIcon(services[3])}</span>
-              <span className="hp-fc-name">{services[3].name}</span>
-            </div>
-            <div className="hp-fc-serving">
-              <span className="hp-fc-serving-label">Now Serving</span>
-              <span className="hp-fc-serving-num">{services[3].serving?.tokenNumber || '—'}</span>
-            </div>
-            <div className="hp-fc-stats">
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{calcEstWait(services[3]) || '—'}</span>
-                <span className="hp-fc-stat-lbl">Est. Wait</span>
-              </div>
-              <div className="hp-fc-stat">
-                <span className="hp-fc-stat-val">{services[3].waitingCount ?? 0}</span>
-                <span className="hp-fc-stat-lbl">Waiting</span>
-              </div>
-            </div>
-            <div className="hp-fc-status">
-              <span className={`hp-fc-dot ${services[3].isOpen ? 'open' : 'closed'}`}></span>
-              <span>{services[3].isOpen ? 'OPEN' : 'CLOSED'}</span>
-            </div>
-          </div>
-        )}
+        {/* Floating Cards — DISPLAY ONLY, NOT CLICKABLE, REAL DATA FROM BACKEND */}
+        {!loading && services.length >= 1 && renderFloatingCard(services[0], 'hp-fc-1')}
+        {!loading && services.length >= 2 && renderFloatingCard(services[1], 'hp-fc-2')}
+        {!loading && services.length >= 3 && renderFloatingCard(services[2], 'hp-fc-3')}
+        {!loading && services.length >= 4 && renderFloatingCard(services[3], 'hp-fc-4')}
 
         {/* Hero Content */}
         <div className="hp-hero-content">
@@ -216,11 +139,14 @@ const HomePage = () => {
         <p className="hp-section-sub">Pick a service to get your digital token. No more standing in line.</p>
 
         <div className="hp-svc-grid">
-          {services.length === 0 && <p className="hp-svc-loading">Loading services...</p>}
+          {loading && <p className="hp-svc-loading">Loading live queue data...</p>}
+          {error && <p className="hp-svc-error">{error}</p>}
+          {!loading && !error && services.length === 0 && (
+            <p className="hp-svc-loading">No services available.</p>
+          )}
           {services.map((s) => {
             const icon = getIcon(s);
             const desc = getDesc(s);
-            const estWait = calcEstWait(s);
             return (
               <div key={s._id} className={`hp-svc-card ${s.isOpen ? '' : 'closed'}`}>
                 <div className="hp-svc-head">
@@ -243,12 +169,10 @@ const HomePage = () => {
                     <span className="hp-svc-stat-label">Waiting</span>
                     <span className="hp-svc-stat-val">{s.waitingCount ?? 0}</span>
                   </div>
-                  {estWait !== null && (
-                    <div className="hp-svc-stat">
-                      <span className="hp-svc-stat-label">Est. Wait</span>
-                      <span className="hp-svc-stat-val">{estWait}</span>
-                    </div>
-                  )}
+                  <div className="hp-svc-stat">
+                    <span className="hp-svc-stat-label">Est. Wait</span>
+                    <span className="hp-svc-stat-val">{s.isOpen ? `${s.estimatedWait ?? 0} min` : '—'}</span>
+                  </div>
                 </div>
 
                 {s.isOpen ? (

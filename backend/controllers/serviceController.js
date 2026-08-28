@@ -30,10 +30,14 @@ const enrichService = async (service) => {
     status: 'WAITING'
   });
 
+  const avgTime = service.averageServiceTime || 5;
+  const estimatedWait = waitingCount * avgTime;
+
   return {
     ...service.toObject(),
     serving: serving,
-    waitingCount
+    waitingCount,
+    estimatedWait
   };
 };
 
