@@ -45,7 +45,13 @@ const ProtectedRoute = ({ children, requireRole, message, onAuthAction }) => {
       return (
         <div style={{ textAlign: 'center', padding: '5rem 2rem' }}>
           <h2 style={{ color: '#b91c1c', marginBottom: '1rem' }}>Access Denied</h2>
-          <p style={{ color: '#64748b' }}>You do not have permission to access this page.</p>
+          <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>You do not have permission to access this page.</p>
+          <div style={{ background: '#f1f5f9', borderRadius: '12px', padding: '1.5rem', maxWidth: '400px', margin: '0 auto', textAlign: 'left' }}>
+            <p style={{ fontWeight: 700, color: '#334155', marginBottom: '0.5rem' }}>Staff Login Credentials:</p>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.25rem 0' }}>Email: <strong>staff@queueless.com</strong></p>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.25rem 0' }}>Password: <strong>staff123</strong></p>
+            <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.75rem' }}>Logout and login with these credentials to access the dashboard.</p>
+          </div>
         </div>
       );
     }

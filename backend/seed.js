@@ -1,5 +1,6 @@
 const Service = require('./models/Service');
 const Token = require('./models/Token');
+const User = require('./models/User');
 
 const services = [
   {
@@ -28,6 +29,13 @@ const services = [
   }
 ];
 
+const defaultStaff = {
+  name: 'Staff Admin',
+  email: 'staff@queueless.com',
+  password: 'staff123',
+  role: 'staff'
+};
+
 const seed = async () => {
   try {
     for (const svc of services) {
@@ -36,7 +44,6 @@ const seed = async () => {
         await Service.create(svc);
         console.log(`Created service: ${svc.name}`);
       } else {
-        // Update description or make sure it matches
         existing.name = svc.name;
         existing.description = svc.description;
         existing.averageServiceTime = svc.averageServiceTime;
@@ -45,6 +52,15 @@ const seed = async () => {
         console.log(`Service verified/updated: ${svc.name}`);
       }
     }
+
+    const existingStaff = await User.findOne({ email: defaultStaff.email });
+    if (!existingStaff) {
+      await User.create(defaultStaff);
+      console.log(`Created staff account: ${defaultStaff.email} / ${defaultStaff.password}`);
+    } else {
+      console.log(`Staff account already exists: ${defaultStaff.email}`);
+    }
+
     console.log('Seed completed!');
   } catch (error) {
     console.error('Seed error:', error.message);

@@ -41,7 +41,7 @@ function AppContent() {
         <Route
           path="/staff"
           element={
-            <ProtectedRoute requireRole={['staff', 'admin']} message="Please log in with a staff account to access the dashboard.">
+            <ProtectedRoute requireRole={['staff', 'admin']} message="Please log in with a staff account to access the dashboard. Staff credentials: staff@queueless.com / staff123">
               <StaffDashboard />
             </ProtectedRoute>
           }
