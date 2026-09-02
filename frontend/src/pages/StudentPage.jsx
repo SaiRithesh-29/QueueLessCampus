@@ -258,7 +258,11 @@ const StudentPage = () => {
 
           {error && <div className="sp-error-msg">{error}</div>}
 
-          {service?.isOpen ? (
+          {service?.onHold ? (
+            <button className="sp-join-btn on-hold" disabled>
+              ⏸ Service On Hold
+            </button>
+          ) : service?.isOpen ? (
             <button className="sp-join-btn" onClick={handleJoin} disabled={creating}>
               {creating ? 'Joining...' : '🎫 Join Queue'}
             </button>
@@ -274,25 +278,27 @@ const StudentPage = () => {
           {/* Token card */}
           <div className="sp-token-card">
             <span className="sp-token-label">YOUR TOKEN</span>
-            <span className={`sp-token-num ${ts === 'SERVING' ? 'serving' : ''} ${ts === 'COMPLETED' || ts === 'CANCELLED' ? 'done' : ''}`}>
+            <span className={`sp-token-num ${ts === 'SERVING' ? 'serving' : ''} ${ts === 'COMPLETED' || ts === 'CANCELLED' || ts === 'REJECTED' ? 'done' : ''}`}>
               {liveTokenNumber}
             </span>
             <span className="sp-token-svc">{service?.name} Counter</span>
           </div>
 
           {/* Status banner */}
-          <div className={`sp-status-bar ${ts === 'SERVING' ? 'serving' : ts === 'COMPLETED' ? 'done' : ts === 'CANCELLED' ? 'cancelled' : 'waiting'}`}>
+          <div className={`sp-status-bar ${ts === 'SERVING' ? 'serving' : ts === 'COMPLETED' ? 'done' : ts === 'CANCELLED' ? 'cancelled' : ts === 'REJECTED' ? 'rejected' : 'waiting'}`}>
             <span className="sp-status-dot"></span>
             <div>
               <strong>
-                {ts === 'SERVING' ? "IT'S YOUR TURN!" :
-                 ts === 'COMPLETED' ? 'COMPLETED' :
-                 ts === 'CANCELLED' ? 'CANCELLED' : 'WAITING'}
+                {ts === 'SERVING' ? "🎉 IT'S YOUR TURN!" :
+                 ts === 'COMPLETED' ? '✅ COMPLETED' :
+                 ts === 'CANCELLED' ? 'CANCELLED' :
+                 ts === 'REJECTED' ? '❌ REJECTED' : '⏳ WAITING'}
               </strong>
               <span>
                 {ts === 'SERVING' ? `Please proceed to the ${service?.name} counter now.` :
                  ts === 'COMPLETED' ? 'Thank you for using QueueLess Campus.' :
                  ts === 'CANCELLED' ? 'Your token has been cancelled.' :
+                 ts === 'REJECTED' ? 'Your token was rejected by staff. Please join the queue again.' :
                  'Your position updates automatically. You can leave and come back.'}
               </span>
             </div>

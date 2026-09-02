@@ -20,6 +20,26 @@ const ProtectedRoute = ({ children, requireRole, message, onAuthAction }) => {
     }
   }, [user, loading, requireRole, message]);
 
+  const handleAuthSuccess = async (type, credentials) => {
+    if (onAuthAction) {
+      await onAuthAction(type, credentials);
+      return;
+    }
+
+    if (type === 'login') {
+      const userData = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: credentials.email, password: credentials.password, role: credentials.role || 'student' })
+      }).then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Login failed');
+        return data.user;
+      });
+      return userData;
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 2rem', color: '#94a3b8' }}>
@@ -33,7 +53,7 @@ const ProtectedRoute = ({ children, requireRole, message, onAuthAction }) => {
       <AuthModal
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
-        onAuthSuccess={onAuthAction}
+        onAuthSuccess={handleAuthSuccess}
         message={authMessage}
       />
     );

@@ -3,6 +3,7 @@ import './AuthModal.css';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login', message }) => {
   const [mode, setMode] = useState(initialMode);
+  const [role, setRole] = useState('student');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,12 +13,19 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login', mess
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
+      setRole('student');
       setName('');
       setEmail('');
       setPassword('');
       setError('');
     }
   }, [isOpen, initialMode]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const nextRole = mode === 'login' ? 'student' : 'student';
+    setRole(nextRole);
+  }, [isOpen, mode]);
 
   if (!isOpen) return null;
 
@@ -39,10 +47,11 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login', mess
     setSubmitting(true);
 
     try {
+      const selectedRole = role || 'student';
       if (mode === 'login') {
-        await onAuthSuccess('login', { email, password });
+        await onAuthSuccess('login', { email, password, role: selectedRole });
       } else {
-        await onAuthSuccess('register', { name, email, password });
+        await onAuthSuccess('register', { name, email, password, role: selectedRole });
       }
       resetForm();
       onClose();
@@ -80,6 +89,20 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess, initialMode = 'login', mess
           )}
 
           <form onSubmit={handleSubmit} className="ql-auth-form">
+            {/* Role Toggle */}
+            <div className="ql-auth-role-toggle">
+              <button type="button"
+                className={`ql-auth-role-btn ${role === 'student' ? 'active' : ''}`}
+                onClick={() => setRole('student')}>
+                <span>🎓</span> Student
+              </button>
+              <button type="button"
+                className={`ql-auth-role-btn ${role === 'staff' ? 'active' : ''}`}
+                onClick={() => setRole('staff')}>
+                <span>👨‍💼</span> Staff
+              </button>
+            </div>
+
             {mode === 'register' && (
               <div className="ql-auth-field">
                 <label htmlFor="auth-name">Full Name</label>

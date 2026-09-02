@@ -4,7 +4,8 @@
   top: 0;
   z-index: 1000;
   width: 100%;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid #e2e8f0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -31,13 +32,13 @@
 .ql-friendly-logo {
   width: 42px;
   height: 42px;
-  background: linear-gradient(135deg, #dbeafe, #ede9fe);
+  background: linear-gradient(135deg, #c7d2fe, #ddd6fe);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.35rem;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
   transition: transform 0.2s;
 }
 
@@ -201,11 +202,11 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.55rem 1.2rem;
-  background: transparent;
-  color: #1e40af;
-  border: 1.5px solid #bfdbfe;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  color: #4f46e5;
+  border: 1.5px solid #c7d2fe;
   border-radius: 9999px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -213,8 +214,9 @@
 }
 
 .ql-btn-staff:hover {
-  background: #eff6ff;
-  border-color: #3b82f6;
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(99,102,241,0.2);
 }
 
 .ql-arrow {

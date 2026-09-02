@@ -75,4 +75,14 @@ export const completeToken = async (serviceId) => {
   return response.data;
 };
 
+export const rejectToken = async (serviceId) => {
+  const response = await api.post(`/tokens/queue/${serviceId}/reject`);
+  return response.data;
+};
+
+export const holdService = async (serviceId) => {
+  const response = await api.post(`/tokens/queue/${serviceId}/hold`);
+  return response.data;
+};
+
 export default api;

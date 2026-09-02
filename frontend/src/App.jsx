@@ -13,7 +13,15 @@ import './App.css';
 function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, login, register } = useAuth();
+
+  const handleProtectedAuth = async (type, credentials) => {
+    if (type === 'login') {
+      await login(credentials.email, credentials.password, credentials.role);
+    } else {
+      await register(credentials.name, credentials.email, credentials.password, credentials.role);
+    }
+  };
 
   useEffect(() => {
     connectSocket();
@@ -41,7 +49,11 @@ function AppContent() {
         <Route
           path="/staff"
           element={
-            <ProtectedRoute requireRole={['staff', 'admin']} message="Please log in with a staff account to access the dashboard. Staff credentials: staff@queueless.com / staff123">
+            <ProtectedRoute
+              requireRole={['staff', 'admin']}
+              message="Please log in with a staff account to access the dashboard. Staff credentials: staff@queueless.com / staff123"
+              onAuthAction={handleProtectedAuth}
+            >
               <StaffDashboard />
             </ProtectedRoute>
           }

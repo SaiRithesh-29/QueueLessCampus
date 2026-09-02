@@ -4,7 +4,7 @@
 
 .hp {
   min-height: calc(100vh - 72px);
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #f0fdfa 100%);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -32,11 +32,11 @@
 .hp-badge {
   display: inline-block;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 2px;
-  color: #2563eb;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  color: #6366f1;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
   border-radius: 9999px;
   padding: 0.35rem 0.9rem;
   margin-bottom: 1.5rem;
@@ -44,10 +44,12 @@
 
 .hp-title {
   font-size: 3.5rem;
-  font-weight: 800;
-  color: #0f172a;
+  font-weight: 900;
   line-height: 1.1;
   letter-spacing: -1.5px;
+  background: linear-gradient(135deg, #0f172a, #6366f1, #8b5cf6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 1.25rem;
 }
 
@@ -71,19 +73,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.85rem 2rem;
-  background: #0d9488;
+  padding: 0.9rem 2rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   color: #fff;
   border: none;
-  border-radius: 12px;
-  font-weight: 700;
+  border-radius: 14px;
+  font-weight: 800;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.2s, transform 0.15s;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
 }
 .hp-btn-primary:hover {
-  background: #0f766e;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99,102,241,0.4);
 }
 
 .hp-btn-icon {
@@ -359,16 +362,18 @@
 
 .hp-svc-card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 20px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
 }
 .hp-svc-card:hover:not(.closed) {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.1);
+  transform: translateY(-4px);
+  border-color: #c7d2fe;
 }
 .hp-svc-card.closed {
   opacity: 0.6;
@@ -455,17 +460,18 @@
 
 .hp-svc-btn {
   margin-top: auto;
-  padding: 0.75rem;
-  background: #0d9488;
+  padding: 0.8rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   color: #fff;
   border: none;
-  border-radius: 10px;
-  font-weight: 700;
+  border-radius: 12px;
+  font-weight: 800;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.25);
 }
-.hp-svc-btn:hover { background: #0f766e; }
+.hp-svc-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.35); }
 .hp-svc-btn.closed {
   background: #e2e8f0;
   color: #94a3b8;

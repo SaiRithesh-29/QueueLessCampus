@@ -6,7 +6,9 @@ const {
   getQueueStatus,
   getTokenStatus,
   completeToken,
+  rejectToken,
   cancelToken,
+  holdService,
   getAnalytics,
   getAllAnalytics
 } = require('../controllers/tokenController');
@@ -25,5 +27,7 @@ router.post('/:id/cancel', protect, cancelToken);
 
 // Staff-only routes
 router.post('/queue/:serviceId/complete', protect, authorize('staff', 'admin'), completeToken);
+router.post('/queue/:serviceId/reject', protect, authorize('staff', 'admin'), rejectToken);
+router.post('/queue/:serviceId/hold', protect, authorize('staff', 'admin'), holdService);
 
 module.exports = router;

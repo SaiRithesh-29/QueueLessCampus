@@ -20,7 +20,7 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'An account with this email already exists' });
     }
 
-    const allowedRoles = ['student'];
+    const allowedRoles = ['student', 'staff'];
     const userRole = allowedRoles.includes(role) ? role : 'student';
 
     const user = await User.create({ name, email, password, role: userRole });
@@ -43,7 +43,7 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
@@ -52,6 +52,12 @@ const login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (role && user.role !== role) {
+      return res.status(401).json({
+        message: `This account is registered as ${user.role}. Please log in with the correct role.`
+      });
     }
 
     const isMatch = await user.comparePassword(password);

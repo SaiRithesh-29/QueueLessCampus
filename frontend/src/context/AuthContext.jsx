@@ -28,16 +28,16 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, [loadUser]);
 
-  const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+  const login = async (email, password, role = 'student') => {
+    const response = await api.post('/auth/login', { email, password, role });
     const { token, user: userData } = response.data;
     localStorage.setItem('ql_token', token);
     setUser(userData);
     return userData;
   };
 
-  const register = async (name, email, password) => {
-    const response = await api.post('/auth/register', { name, email, password });
+  const register = async (name, email, password, role = 'student') => {
+    const response = await api.post('/auth/register', { name, email, password, role });
     const { token, user: userData } = response.data;
     localStorage.setItem('ql_token', token);
     setUser(userData);

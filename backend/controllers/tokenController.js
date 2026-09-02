@@ -50,6 +50,12 @@ const createToken = async (req, res) => {
       });
     }
 
+    if (service.onHold) {
+      return res.status(400).json({
+        message: `${service.name} is currently on hold. Please try again later.`
+      });
+    }
+
     const actualServiceId = service._id;
     const tokenNumber = await generateTokenNumber(service);
 
@@ -216,6 +222,12 @@ const completeToken = async (req, res) => {
     const service = await findService(req.params.serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
+    }
+
+    if (service.onHold) {
+      return res.status(400).json({
+        message: `${service.name} is currently on hold. Resume the service before serving a token.`
+      });
     }
 
     const actualServiceId = service._id;
@@ -435,13 +447,125 @@ const getAllAnalytics = async (req, res) => {
   }
 };
 
+// Reject current serving token and auto-promote next
+const rejectToken = async (req, res) => {
+  try {
+    const service = await findService(req.params.serviceId);
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    if (service.onHold) {
+      return res.status(400).json({
+        message: `${service.name} is currently on hold. Resume the service before rejecting a token.`
+      });
+    }
+
+    const actualServiceId = service._id;
+
+    const currentToken = await Token.findOne({
+      service: actualServiceId,
+      status: 'SERVING'
+    });
+
+    if (!currentToken) {
+      return res.status(400).json({ message: 'No token currently being served' });
+    }
+
+    currentToken.status = 'REJECTED';
+    currentToken.completedAt = new Date();
+    await currentToken.save();
+
+    const rejectedToken = currentToken;
+
+    const nextToken = await Token.findOne({
+      service: actualServiceId,
+      status: 'WAITING'
+    }).sort({ createdAt: 1 });
+
+    let newServing = null;
+    if (nextToken) {
+      nextToken.status = 'SERVING';
+      nextToken.servingAt = new Date();
+      await nextToken.save();
+      newServing = nextToken;
+    }
+
+    const io = req.app.get('io');
+    emitQueueUpdate(io, actualServiceId);
+
+    if (newServing) {
+      io.emit('token:serving', {
+        serviceId: actualServiceId,
+        tokenId: newServing._id,
+        tokenNumber: newServing.tokenNumber
+      });
+    }
+
+    io.emit('token:rejected', {
+      serviceId: actualServiceId,
+      tokenId: rejectedToken._id,
+      tokenNumber: rejectedToken.tokenNumber
+    });
+
+    res.json({
+      rejected: rejectedToken,
+      newServing,
+      message: newServing
+        ? `Token ${rejectedToken.tokenNumber} rejected. ${newServing.tokenNumber} is now being served.`
+        : `Token ${rejectedToken.tokenNumber} rejected. No more tokens in queue.`
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to reject token', error: error.message });
+  }
+};
+
+// Toggle hold status for a service
+const holdService = async (req, res) => {
+  try {
+    const service = await findService(req.params.serviceId);
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    service.onHold = !service.onHold;
+
+    if (service.onHold) {
+      await Token.updateMany(
+        { service: service._id, status: 'SERVING' },
+        { $set: { status: 'WAITING', servingAt: null } }
+      );
+    }
+
+    await service.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('service:update', {
+        serviceId: service._id,
+        onHold: service.onHold
+      });
+      io.to(`service:${service._id}`).emit('queue:update', { serviceId: service._id });
+    }
+
+    res.json({
+      service,
+      message: service.onHold ? `${service.name} is now on hold` : `${service.name} is now active`
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to toggle hold status', error: error.message });
+  }
+};
+
 module.exports = {
   createToken,
   getToken,
   getQueueStatus,
   getTokenStatus,
   completeToken,
+  rejectToken,
   cancelToken,
+  holdService,
   getAnalytics,
   getAllAnalytics
 };

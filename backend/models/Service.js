@@ -27,6 +27,10 @@ const serviceSchema = new mongoose.Schema({
   isOpen: {
     type: Boolean,
     default: true
+  },
+  onHold: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

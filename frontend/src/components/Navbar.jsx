@@ -63,10 +63,11 @@ const Navbar = ({ onOpenAbout, onOpenSupport }) => {
   };
 
   const handleAuthSuccess = async (type, credentials) => {
+    const selectedRole = credentials.role || 'student';
     if (type === 'login') {
-      await login(credentials.email, credentials.password);
+      await login(credentials.email, credentials.password, selectedRole);
     } else {
-      await register(credentials.name, credentials.email, credentials.password);
+      await register(credentials.name, credentials.email, credentials.password, selectedRole);
     }
   };
 
