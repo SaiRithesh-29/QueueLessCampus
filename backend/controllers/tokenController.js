@@ -170,6 +170,12 @@ const getTokenStatus = async (req, res) => {
       createdAt: { $gt: token.createdAt }
     });
 
+    const tokensAhead = await Token.find({
+      service: token.service._id,
+      status: { $in: ['SERVING', 'WAITING'] },
+      createdAt: { $lt: token.createdAt }
+    }).sort({ createdAt: 1 }).select('tokenNumber status createdAt');
+
     const avgTime = serviceDoc ? (serviceDoc.averageServiceTime || 5) : 5;
 
     let estimatedWait = 0;
@@ -193,6 +199,7 @@ const getTokenStatus = async (req, res) => {
       serving: servingToken,
       peopleAhead,
       peopleBehind,
+      tokensAhead,
       estimatedWait,
       isServing: token.status === 'SERVING',
       isCompleted: token.status === 'COMPLETED',

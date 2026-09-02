@@ -32,10 +32,21 @@ const StudentPage = () => {
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const prevStatusRef = useRef(null);
+  const countdownRef = useRef(null);
 
   const { status, loading: statusLoading } = useTokenStatus(tokenId);
   const { queue: queueStatus } = useQueueStatus(tokenId ? null : serviceId);
+
+  // Reset token state when switching services
+  useEffect(() => {
+    setTokenId(null);
+    setTokenData(null);
+    setError(null);
+    setBanner(null);
+    prevStatusRef.current = null;
+  }, [serviceId]);
 
   useEffect(() => {
     connectSocket();
@@ -102,6 +113,30 @@ const StudentPage = () => {
     requestNotificationPermission().then((p) => { if (p === 'granted') setNotifEnabled(true); });
   }, [notifEnabled]);
 
+  // Real-time countdown timer
+  useEffect(() => {
+    const currentStatus = status?.token?.status;
+    if (currentStatus !== 'WAITING' || !status?.estimatedWait) {
+      setCountdown(0);
+      return;
+    }
+    const totalSeconds = (status.estimatedWait || 0) * 60;
+    setCountdown(totalSeconds > 0 ? totalSeconds : 0);
+
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, [status?.token?.status, status?.estimatedWait]);
+
   const handleJoin = async () => {
     if (!service?._id) return;
     if (!user) {
@@ -158,6 +193,7 @@ const StudentPage = () => {
   );
 
   const ts = status?.token?.status;
+  const liveTokenNumber = status?.token?.tokenNumber || tokenData?.token?.tokenNumber;
 
   return (
     <div className="sp">
@@ -239,7 +275,7 @@ const StudentPage = () => {
           <div className="sp-token-card">
             <span className="sp-token-label">YOUR TOKEN</span>
             <span className={`sp-token-num ${ts === 'SERVING' ? 'serving' : ''} ${ts === 'COMPLETED' || ts === 'CANCELLED' ? 'done' : ''}`}>
-              {tokenData?.token?.tokenNumber}
+              {liveTokenNumber}
             </span>
             <span className="sp-token-svc">{service?.name} Counter</span>
           </div>
@@ -267,24 +303,46 @@ const StudentPage = () => {
             <div className="sp-syncing">Syncing...</div>
           ) : status ? (
             ts === 'WAITING' ? (
-              <div className="sp-stats-grid">
-                <div className="sp-stat-card">
-                  <span className="sp-stat-lbl">Now Serving</span>
-                  <span className="sp-stat-val">{status.serving?.tokenNumber || '—'}</span>
+              <>
+                <div className="sp-stats-grid">
+                  <div className="sp-stat-card">
+                    <span className="sp-stat-lbl">Now Serving</span>
+                    <span className="sp-stat-val">{status.serving?.tokenNumber || '—'}</span>
+                  </div>
+                  <div className="sp-stat-card">
+                    <span className="sp-stat-lbl">People Ahead</span>
+                    <span className="sp-stat-val">{status.peopleAhead}</span>
+                  </div>
+                  <div className="sp-stat-card">
+                    <span className="sp-stat-lbl">People Behind</span>
+                    <span className="sp-stat-val">{status.peopleBehind}</span>
+                  </div>
+                  <div className="sp-stat-card">
+                    <span className="sp-stat-lbl">Est. Wait</span>
+                    <span className="sp-stat-val">
+                      {Math.floor(countdown / 60)}m {countdown % 60}s
+                    </span>
+                  </div>
                 </div>
-                <div className="sp-stat-card">
-                  <span className="sp-stat-lbl">People Ahead</span>
-                  <span className="sp-stat-val">{status.peopleAhead}</span>
-                </div>
-                <div className="sp-stat-card">
-                  <span className="sp-stat-lbl">People Behind</span>
-                  <span className="sp-stat-val">{status.peopleBehind}</span>
-                </div>
-                <div className="sp-stat-card">
-                  <span className="sp-stat-lbl">Estimated Wait</span>
-                  <span className="sp-stat-val">{status.estimatedWait} min</span>
-                </div>
-              </div>
+
+                {/* Waiting list with token numbers */}
+                {status.tokensAhead && status.tokensAhead.length > 0 && (
+                  <div className="sp-ahead-list">
+                    <h3 className="sp-ahead-title">People Ahead of You</h3>
+                    <div className="sp-ahead-items">
+                      {status.tokensAhead.map((t, i) => (
+                        <div key={t._id || i} className={`sp-ahead-item ${t.status === 'SERVING' ? 'serving' : ''}`}>
+                          <span className="sp-ahead-pos">#{i + 1}</span>
+                          <span className="sp-ahead-token">{t.tokenNumber}</span>
+                          <span className={`sp-ahead-badge ${t.status.toLowerCase()}`}>
+                            {t.status === 'SERVING' ? 'SERVING' : 'WAITING'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="sp-stats-grid single">
                 <div className="sp-stat-card wide">
