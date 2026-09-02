@@ -31,6 +31,7 @@ export const useTokenStatus = (tokenId) => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [joinedServiceId, setJoinedServiceId] = useState(null);
 
   const fetchStatus = useCallback(async () => {
     if (!tokenId) return;
@@ -48,15 +49,33 @@ export const useTokenStatus = (tokenId) => {
 
   useEffect(() => {
     fetchStatus();
+  }, [fetchStatus]);
+
+  // Join correct service room once status loads with service info
+  useEffect(() => {
     const socket = getSocket();
-    if (socket && tokenId) {
-      socket.emit('join:service', status?.service?._id);
-      const handler = () => fetchStatus();
-      socket.on('queue:update', handler);
-      return () => socket.off('queue:update', handler);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchStatus, tokenId]);
+    if (!socket || !tokenId) return;
+    const serviceId = status?.service?._id;
+    if (!serviceId) return;
+    if (joinedServiceId === serviceId) return;
+
+    socket.emit('join:service', serviceId);
+    setJoinedServiceId(serviceId);
+  }, [tokenId, status, joinedServiceId]);
+
+  // Subscribe to queue updates filtered by the correct service
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !tokenId || !joinedServiceId) return;
+
+    const handler = (data) => {
+      if (!data.serviceId || data.serviceId === joinedServiceId) {
+        fetchStatus();
+      }
+    };
+    socket.on('queue:update', handler);
+    return () => socket.off('queue:update', handler);
+  }, [fetchStatus, tokenId, joinedServiceId]);
 
   return { status, loading, error, refetch: fetchStatus };
 };

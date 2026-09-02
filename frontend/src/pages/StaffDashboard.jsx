@@ -42,14 +42,18 @@ const StaffDashboard = () => {
 
   useEffect(() => {
     const socket = connectSocket();
-    const handleUpdate = () => { fetchData(); fetchQueue(); };
+    const handleUpdate = (data) => {
+      if (data?.serviceId && selectedService?._id && data.serviceId !== selectedService._id) return;
+      fetchData();
+      fetchQueue();
+    };
     socket.on('queue:update', handleUpdate);
     socket.on('service:update', handleUpdate);
     return () => {
       socket.off('queue:update', handleUpdate);
       socket.off('service:update', handleUpdate);
     };
-  }, [fetchData, fetchQueue]);
+  }, [fetchData, fetchQueue, selectedService?._id]);
 
   const handleCallNext = async () => {
     if (!selectedService?._id) return;

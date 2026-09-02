@@ -55,10 +55,11 @@ const StudentPage = () => {
       .finally(() => setLoading(false));
   }, [serviceId]);
 
-  // Real-time service status updates
+  // Real-time service status updates (filtered to this service only)
   useEffect(() => {
     const socket = connectSocket();
-    const handleServiceUpdate = () => {
+    const handleServiceUpdate = (data) => {
+      if (data?.serviceId && service?._id && data.serviceId !== service._id) return;
       getServices().then((list) => {
         setServices(list);
         const key = (serviceId || '').toLowerCase();
@@ -76,7 +77,7 @@ const StudentPage = () => {
       socket.off('service:update', handleServiceUpdate);
       socket.off('queue:update', handleServiceUpdate);
     };
-  }, [serviceId]);
+  }, [serviceId, service?._id]);
 
   // Notifications on status change
   useEffect(() => {
